@@ -17,11 +17,10 @@ http://www.katousa.com/images/unitrack/20-283.jpg
 Followed the standard from Littfinski DatenTechnik (LDT) TurnTable Decoder TT-DEC
 https://www.ldt-infocenter.com/dokuwiki/doku.php?id=en:tt-dec
 
-Controller will be used with:
-ESU ECoS and iTrain
+ESU ECoS:
 http://www.esu.eu/en/products/digital-control/
 
-Uhlenbrock Intellibox and iTrain
+Uhlenbrock Intellibox:
 https://www.uhlenbrock.de/de_DE/produkte/digizen/index.htm
 
 Model railroad control program called: iTrain:
