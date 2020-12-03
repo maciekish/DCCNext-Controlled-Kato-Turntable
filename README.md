@@ -8,14 +8,13 @@ Components shopping list:<BR>
 Main Components:<BR>
 DCCNext:<BR>
 https://www.arcomora.com/dccnext/<BR>
-Order your own DCCNext complete package here:<BR>
-(choose the combiset (DCCNext + USB interf. + Box)<BR>
+Order your own DCCNext complete package (choose the combiset (DCCNext + USB interf. + Box) here:<BR>
 https://www.arcomora.com/reservation/<BR>
 <BR>
 DCCNext-Controlled-Kato-Turntable PCB:<BR>
 PCB version 1.0 is still available. Can be requested by email to me (only for people in The Netherlands)<BR>
 <BR>
-Resistors: 4x 1kOhm 1/8 Watt<&nbsp><&nbsp><&nbsp><&nbsp>https://www.aliexpress.com/item/4000695402017.html<BR>
+Resistors: 4x 1kOhm 1/8 Watt<&nbsp&nbsp&nbsp&nbsp>https://www.aliexpress.com/item/4000695402017.html<BR>
 Switches: 3x tactile switch 7 mm<&nbsp><&nbsp><&nbsp><&nbsp>https://www.aliexpress.com/item/32912104842.html<BR>
 Relay: 1x HFD2_005-S-L2-D<&nbsp><&nbsp><&nbsp><&nbsp>https://www.aliexpress.com/item/32983182219.html<BR>
 LED 3mm: 1x Red, 1x Green, 1x Yellow, 1x Blue<&nbsp><&nbsp><&nbsp><&nbsp>https://www.aliexpress.com/item/32848822296.html<BR>
