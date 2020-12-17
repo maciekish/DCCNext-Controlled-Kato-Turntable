@@ -1,14 +1,14 @@
-//----------------------------------------------------------// DCCNext-Controlled-Kato-Turntable_v1.31
+//----------------------------------------------------------// DCCNext-Controlled-Kato-Turntable_v1.34
 #include <EEPROM.h>                                         // Standard Arduino EEPROM library
 #include <DCC_Decoder.h>                                    // Use Manage Libraries to add: NmraDcc -- https://github.com/MynaBay/DCC_Decoder
 #include <ezButton.h>                                       // Use Manage Libraries to add: ezButton -- https://github.com/ArduinoGetStarted/button
 #include <LiquidCrystal_I2C.h>                              // Use Manage Libraries to add: LiquidCrystal I2C -- https://github.com/johnrickman/LiquidCrystal_I2C
-#define maxSpeed                       120                  // Speed between -255 = Reversed to 255 = Forward (-5 to +5 VDC)
+#define maxSpeed                       100                  // Speed between -255 = Reversed to 255 = Forward (-5 to +5 VDC)
 #define maxTrack                        36                  // Total Number of Turntable Tracks
 #define kDCC_INTERRUPT                   0                  // DCC Interrupt 0
 #define DCC_Max_Accessories             22                  // Total Number of DCC Accessory Decoder Addresses = 225-246
 #define DCC_Interrupt                    2                  // Arduino Output Pin  2 = DCC signal = Interrupt 0
-#define Turntable_Switch                 3                  // Arduino Output Pin  3 = Turntable Trigger      = Cable Pin 1
+// #define Turntable_Switch                 3                  // Arduino Output Pin  3 = Turntable Trigger      = Cable Pin 1
 #define Turntable_MotorM1                5                  // Arduino Output Pin  5 = Turntable Motor M1     = Cable Pin 3
 #define Turntable_MotorM2                6                  // Arduino Output Pin  6 = Turntable Motor M1     = Cable Pin 4
 #define Turntable_BridgeL                7                  // Arduino Output Pin  7 = Turntable Bridge Left  = Cable Pin 7
@@ -20,6 +20,7 @@
                                                             // Arduino Output Pin 15 = Green LED         = Function Green
                                                             // Arduino Output Pin 16 = Yellow LED        = TURN 180
                                                             // Arduino Output Pin 17 = Blue LED          = ????????
+ezButton Turntable_Switch(3);                               // Arduino Output Pin  3 = Turntable Trigger      = Cable Pin 1
 ezButton Button_180(4);                                     // Arduino Input  Pin  4 = Button Turn 180   = Turn 180
 ezButton Button_Right(11);                                  // Arduino Input  Pin 11 = Button Turn Right = Turn 1 Step ClockWise
 ezButton Button_Left(12);                                   // Arduino Input  Pin 12 = Button Turn Left  = Turn 1 Step Counter ClockWise
@@ -33,7 +34,7 @@ boolean Turntable_OldSwitchState    =  LOW;                 // Old Switch Status
 unsigned long Turntable_TurnStart   =    0;                 // Start time to turn before stop
 unsigned long Turntable_TurnTime    = 1000;                 // Minimum time in ms to turn before check to stop
 unsigned long Turntable_SwitchTime  =    0;                 // Last time the output pin was toggled
-unsigned long Turntable_SwitchDelay =   50;                 // Debounce time in ms
+unsigned long Turntable_SwitchDelay =  100;                 // Debounce time in ms
 
 
 const char* Turntable_States[] =                            // Possible Turntable States
@@ -102,7 +103,7 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);                         // I2C Liquid Crysta
 void setup()
 {
   Serial.begin(57600);
-  Serial.println(F("DCCNext-Controlled-Kato-Turntable_v1.31 -- (c)JMRRvS 2020-12-02")); // Serial print loaded sketch
+  Serial.println(F("DCCNext-Controlled-Kato-Turntable_v1.34 -- (c)JMRRvS 2020-12-14")); // Serial print loaded sketch
   lcd.init();                                               // Initialise LCD
   lcd.backlight();                                          // Turn backlight On
   lcd.setCursor(0, 0);                                      // Set cursor to first line and left corner
@@ -110,18 +111,18 @@ void setup()
   lcd.print(F("DCCNext Controlled  "));                     // LCD print text
   lcd.setCursor(0, 1);                                      // Set cursor to second line and left corner
 //             01234567890123456789                         // Sample text
-  lcd.print(F("Kato Turntable v1.31"));                     // LCD print text
+  lcd.print(F("Kato Turntable v1.34"));                     // LCD print text
   lcd.setCursor(0, 2);                                      // Set cursor to third line and left corner
 //             01234567890123456789                         // Sample text
   lcd.print(F("--------------------"));                     // LCD print text
   lcd.setCursor(0, 3);                                      // Set cursor to fourth line and left corner
 //             01234567890123456789                         // Sample text
-  lcd.print(F("(c)JMRRvS 2020-12-02"));                     // LCD print text
+  Turntable_Switch.setDebounceTime(50);                     // set debounce time to 50 milliseconds
   Button_180.setDebounceTime(50);                           // set debounce time to 50 milliseconds
   Button_Right.setDebounceTime(50);                         // set debounce time to 50 milliseconds
   Button_Left.setDebounceTime(50);                          // set debounce time to 50 milliseconds
   pinMode(DCC_Interrupt    , INPUT_PULLUP);                 // Arduino Output Pin  2 = DCC signal = Interrupt 0
-  pinMode(Turntable_Switch , INPUT_PULLUP);                 // Arduino Output Pin  3 = Turntable Trigger      = Cable Pin 1
+//  pinMode(Turntable_Switch , INPUT_PULLUP);                 // Arduino Output Pin  3 = Turntable Trigger      = Cable Pin 1
   pinMode(Turntable_MotorM1, OUTPUT);                       // Arduino Output Pin  5 = Turntable Motor M1     = Cable Pin 3
   pinMode(Turntable_MotorM2, OUTPUT);                       // Arduino Output Pin  6 = Turntable Motor M1     = Cable Pin 4
   pinMode(Turntable_BridgeL, OUTPUT);                       // Arduino Output Pin  7 = Turntable Bridge Left  = Cable Pin 7
@@ -167,8 +168,6 @@ void setup()
     delay(200);                                             // LED On for 200 msec
     digitalWrite(DCC_Action_LED, LOW);                      // Turn LED Off at startup
   } // END for
-  Turntable_OldSwitchState = digitalRead(Turntable_Switch);// Arduino Output Pin  3 = Turntable Trigger      = Cable Pin 1
-  Turntable_NewSwitchState = digitalRead(Turntable_Switch);// Arduino Output Pin  3 = Turntable Trigger      = Cable Pin 1
 } // END setup
 
 
@@ -702,32 +701,15 @@ void Button_CheckStatus()
 
 void Turntable_CheckSwitch()                                // From HIGH to LOW = Bridge in Position
 {
-  boolean SwitchState = digitalRead(Turntable_Switch);      // Arduino Output Pin  3 = Turntable Trigger      = Cable Pin 1
-  if (SwitchState != Turntable_OldSwitchState)              // Only when SwitchState is changed
+  Turntable_Switch.loop();                                  // Check debounce and update the state of the Turntable Switch
+  if (Turntable_Switch.isPressed())                         // Bridge in Position
   {
-    Turntable_SwitchTime = millis();
-    Serial.print(F("TT_CheckSwitch       --> "));           // Serial print Function
-    Serial.println(SwitchState);                            // Serial print SwitchState
-  } // END if
-  if ((millis() - Turntable_SwitchTime) > Turntable_SwitchDelay)
-  {
-    if (SwitchState != Turntable_NewSwitchState)
-    {
-      Turntable_NewSwitchState = SwitchState;
-      if (Turntable_NewSwitchState == LOW)                  // New Position Reached
-      {
         Turntable_OldAction = Turntable_NewAction;          // Switch Old Action
         Turntable_NewAction = POS;                          // Bridge in Position
 //                      012345678901234567890123456789      // Sample text
         Serial.print(F("TT_CheckSwitch       --> "));       // Serial print Function
-//        lcd.setCursor(0, 2);                                // Set cursor to third line and left corner
-//                   01234567890123456789                   // Sample text
-//        lcd.print(F("(..)TT_CheckSwitch  "));               // LCD print text
         PrintStatus();                                      // Print Actions and Track Numbers
-      } // END if
-    } // END if
   } // END if
-  Turntable_OldSwitchState = SwitchState;
 } // END Turntable_CheckSwitch
 
 
@@ -842,11 +824,7 @@ void loop()
 {
   DCC_Accessory_CheckStatus();                              // Check DCC Accessory Status
   Button_CheckStatus();                                     // Check Button Status
-                                                            // Minimum time in ms to turn before check to stop
-  if (((millis() - Turntable_TurnStart) > Turntable_TurnTime) && (Turntable_NewAction != POS))
-  {
-    Turntable_CheckSwitch();                                // Check Kato Turntable Pin 1
-  } // END if
+  Turntable_CheckSwitch();                                  // Check Kato Turntable Pin 1
 
   if ((Turntable_OldAction == STOP) && (Turntable_NewAction == DCC_INPUT))
   {
@@ -889,7 +867,7 @@ void loop()
 
   if ((Turntable_OldAction != DCC_T180) && (Turntable_NewAction == DCC_T180))
   {
-    if ((Turntable_CurrentTrack >= 1) && (Turntable_CurrentTrack <= 19))
+    if ((Turntable_CurrentTrack >= 1) && (Turntable_CurrentTrack <= 18))
     {
       speedValue = maxSpeed;                                // Positive = Direction ClockWise
       Turntable_MotorCW();                                  // Motor M1 Forward
@@ -941,7 +919,7 @@ void loop()
 
   if ((Turntable_OldAction != Button_T180) && (Turntable_NewAction == Button_T180))
   {
-    if ((Turntable_CurrentTrack >= 1) && (Turntable_CurrentTrack <= 19))
+    if ((Turntable_CurrentTrack >= 1) && (Turntable_CurrentTrack <= 18))
     {
       speedValue = maxSpeed;                                // Positive = Direction ClockWise
       Turntable_MotorCW();                                  // Motor M1 Forward
@@ -1094,6 +1072,7 @@ void Turntable_setM1Speed(int speed)                        // Motor M1 Set Spee
     analogWrite(Turntable_MotorM2, speed);                  // PWM on Motor M2
   } // END if
   LCDPrintTrackText();
+  
   LCDPrintTrackStatus();
 } // END Turntable_setM1Speed
 
@@ -1131,7 +1110,6 @@ void Turntable_MotorCW()                                    // Motor M1 Forward
 {
   digitalWrite(Turntable_Status, LOW);                      // LED OFF = Arduino Onboard LED 13 = Bridge in Position
   digitalWrite(DCC_Action_LED  , HIGH);                     // LED ON
-//  speedValue = maxSpeed;                                    // Positive = Turn ClockWise
   Turntable_setM1Speed(speedValue);                         // Motor M1 Speed value
   Turntable_TurnStart = millis();                           // Time when turn starts
 } // END Turntable_MotorCW
@@ -1141,7 +1119,6 @@ void Turntable_MotorCCW()                                   // Motor M1 Reverse
 {
   digitalWrite(Turntable_Status, LOW);                      // LED OFF = Arduino Onboard LED 13 = Bridge in Position
   digitalWrite(DCC_Action_LED  , HIGH);                     // LED ON
-//  speedValue = -maxSpeed;                                   // Negative = Turn Counter ClockWise
   Turntable_setM1Speed(speedValue);                         // Motor M1 Speed value
   Turntable_TurnStart = millis();                           // Time when turn starts
 } // END Turntable_MotorCCW
