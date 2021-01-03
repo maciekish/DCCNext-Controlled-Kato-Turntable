@@ -1,4 +1,4 @@
-//-----------------------------------------------------------------------------// DCCNext-Controlled-Kato-Turntable_v1.45
+//-----------------------------------------------------------------------------// DCCNext-Controlled-Kato-Turntable_v1.47
 #include <EEPROM.h>                                                            // Standard Arduino EEPROM library
 #include <DCC_Decoder.h>                                                       // Use Manage Libraries to add: NmraDcc -- https://github.com/MynaBay/DCC_Decoder
 #include <ezButton.h>                                                          // Use Manage Libraries to add: ezButton -- https://github.com/ArduinoGetStarted/button
@@ -8,7 +8,7 @@
 #define kDCC_INTERRUPT                    0                                    // DCC Interrupt 0
 #define DCC_Address_Offset                1                                    // Default = 1, for Multimaus = 4
 #define DCC_Max_Accessories              13                                    // Total Number of DCC Accessory Decoder Addresses = 225-237
-#define DCC_Interrupt                     2                                    // Arduino Output Pin  2 = DCC signal = Interrupt 0
+#define DCC_Interrupt                     2                                    // Arduino Input  Pin  2 = DCC signal = Interrupt 0
 #define Turntable_MotorM1                 5                                    // Arduino Output Pin  5 = Turntable Motor     = Turntable Cable Pin 3
 #define Turntable_MotorM2                 6                                    // Arduino Output Pin  6 = Turntable Motor     = Turntable Cable Pin 4
 #define BridgeRelayL1                     7                                    // Arduino Output Pin  7 = ULN2803A Pin 1+2    = Bridge Relay L1-
@@ -16,35 +16,46 @@
 #define Turntable_LockL2                  9                                    // Arduino Output Pin  9 = Turntable Lock L2   = Turntable Cable Pin 6
 #define Turntable_LockL1                 10                                    // Arduino Output Pin 10 = Turntable Lock L1   = Turntable Cable Pin 5
 #define WatchdogLED                      13                                    // Arduino Output Pin 13 = DCCNext Red LED     = Watchdog Blink
-                                                                               // Arduino Output Pin 14 = Red LED             = Function Red
-                                                                               // Arduino Output Pin 15 = Green LED           = Function Green
-                                                                               // Arduino Output Pin 16 = Yellow LED          = Turn 180
-#define Turntable_Status                 17                                    // Arduino Output LED 17 = Blue LED            = Bridge in Position
+#define RedLED                           14                                    // Arduino Output Pin 14 = Red LED             = Function Red
+#define GreenLED                         15                                    // Arduino Output Pin 15 = Green LED           = Function Green
+#define YellowLED                        16                                    // Arduino Output Pin 16 = Yellow LED          = Turn 180
+#define Turntable_StatusLED              17                                    // Arduino Output Pin 17 = Blue LED            = Bridge in Position
                                                                                // Arduino VCC Pin       = Bridge Relay L1+
                                                                                // Arduino VCC Pin       = Bridge Relay L2+
                                                                                // Arduino Ground Pin GND                      = Turntable Cable Pin 2
 ezButton Turntable_Switch(3);                                                  // Arduino Input  Pin  3 = Turntable Trigger   = Turntable Cable Pin 1
-ezButton Button_180(4);                                                        // Arduino Input  Pin  4 = Button Turn 180     = Turn 180
+ezButton Button_T180(4);                                                       // Arduino Input  Pin  4 = Button Turn 180     = Turn 180
 ezButton Button_Right(11);                                                     // Arduino Input  Pin 11 = Button Turn Right   = Turn 1 Step ClockWise
 ezButton Button_Left(12);                                                      // Arduino Input  Pin 12 = Button Turn Left    = Turn 1 Step Counter ClockWise
-uint8_t DCC_Action_LED              =     0;                                   // Pin Number will change by DCC command (pin 14 = Red , 15 = Green, 16 = Blue)
-uint8_t Turntable_CurrentTrack      =     0;                                   // Turntable Current Track
-uint8_t Turntable_NewTrack          =     0;                                   // Turntable New Track
-uint8_t EE_Address                  =     0;                                   // EEPROM Address Turntable Bridge Position
-int speedValue                      =     0;                                   // Turntable Motor Speed = 0 - 255
-boolean DCC_ReverseTrack[36];                                                  // Status will change by DCC command (false = Normal, true = Reversed)
-// Note: Size of DCC_ReverseTrack (36) must be the same as maxTrack !!         // Note: Size of DCC_ReverseTrack must be the same as maxTrack !!                                                                               // Note: Size of DCC_ReverseTrack must be the same as maxTrack !!
-unsigned long WatchdogMillis        =     0;                                   // Last time Watchdog LED was updated
-const long WatchdogInterval         =   500;                                   // Watchdog blink interval in ms
-boolean WatchdogState               =   LOW;                                   // Watchdog LED state
-unsigned long BridgeRelayMaxMillis  =     0;                                   // Bridge Relay Active Timer
-unsigned long BridgeRelayPulsTime   =   250;                                   // Bridge Relay Pulse Time in ms
-boolean BridgeRelayActive           = false;                                   // Bridge Relay Not Active
-unsigned long TurntableLockMillis   =     0;                                   // Turntable Lock Active Timer
-const long TurntableLockInterval    =   500;                                   // Turntable Lock Pulse Time in ms
-boolean TurntableLockActive         = false;                                   // Turntable Lock Not Active
-uint8_t Track1                      =     0;                                   // Temp variables
-uint8_t Track2                      =     0;                                   // Temp variables
+uint32_t Button_T180_PressedTime     =     0;                                  // Button Turn 180 pressed time in ms
+uint32_t Button_T180_ReleasedTime    =     0;                                  // Button Turn 180 released time in ms
+uint32_t Button_T180_PressTime       =     0;                                  // Button Turn 180 press time in ms
+uint32_t Button_T180_ShortPressTime  =  1000;                                  // Button Turn 180 short press time in ms
+uint32_t Button_T180_LongPressTime   =  3000;                                  // Button Turn 180 long press time in ms
+boolean  Button_T180_CurrentState    =  HIGH;                                  // Button Turn 180 current state (Released = HIGH)
+boolean  Button_T180_LastState       =  HIGH;                                  // Button Turn 180 last state (Released = HIGH)
+boolean  Button_T180_IsPressed       = false;                                  // Button Turn 180 pressed
+boolean  Button_T180_IsPressing      = false;                                  // Button Turn 180 pressing
+boolean  Button_T180_ShortPressed    = false;                                  // Button Turn 180 short pressed
+boolean  Button_T180_LongPressed     = false;                                  // Button Turn 180 long pressed
+uint8_t  DCC_Action_LED             =     0;                                   // Pin Number will change by DCC command (pin 14 = Red , 15 = Green, 16 = Blue)
+uint8_t  Turntable_CurrentTrack     =     0;                                   // Turntable Current Track
+uint8_t  Turntable_NewTrack         =     0;                                   // Turntable New Track
+uint8_t  EE_Address                 =     0;                                   // EEPROM Address Turntable Bridge Position
+int      speedValue                 =     0;                                   // Turntable Motor Speed = 0 - 255
+boolean  DCC_ReverseTrack[36];                                                 // Status will change by DCC command (false = Normal, true = Reversed)
+// Note: Size of DCC_ReverseTrack must be the same as maxTrack !!              // Note: Size of DCC_ReverseTrack must be the same as maxTrack !!                                                                               // Note: Size of DCC_ReverseTrack must be the same as maxTrack !!
+const uint32_t WatchdogInterval     =   250;                                   // Watchdog blink interval in ms
+uint32_t WatchdogMillis             =     0;                                   // Last time Watchdog LED was updated
+boolean  WatchdogState              =   LOW;                                   // Watchdog LED state
+boolean  BridgeRelayActive          = false;                                   // Bridge Relay Not Active
+uint32_t BridgeRelayMaxMillis       =     0;                                   // Bridge Relay Active Timer
+uint32_t BridgeRelayPulsTime        =   250;                                   // Bridge Relay Pulse Time in ms
+uint32_t TurntableLockMillis        =     0;                                   // Turntable Lock Active Timer
+uint32_t TurntableLockInterval      =   500;                                   // Turntable Lock Pulse Time in ms
+boolean  TurntableLockActive        = false;                                   // Turntable Lock Not Active
+uint8_t  Track1                     =     0;                                   // Temp variables
+uint8_t  Track2                     =     0;                                   // Temp variables
 
 const char* Turntable_States[] =                                               // Possible Turntable States
 {//012345678
@@ -64,28 +75,30 @@ const char* Turntable_States[] =                                               /
   "DCC_DCCW ",                                                                 // DCC Command Direction Counter ClockWise   - Button 228: 1 = ON  (Green)
   "BUT_T180 ",                                                                 // Button T180  = Turn 180
   "BUT_T1CW ",                                                                 // Button Right = Turn 1 Step ClockWise
-  "BUT_T1CCW"                                                                  // Button Left  = Turn 1 Step Counter ClockWise
+  "BUT_T1CCW",                                                                 // Button Left  = Turn 1 Step Counter ClockWise
+  "BUT_STORE"                                                                  // Button T180  = Store current position as track 1
 }; // END const
 
 enum Turntable_NewActions:uint8_t                                              // Possible Turntable Actions
 {
-  STOP        ,                                                                // Stop Turning
-  POS         ,                                                                // Bridge in Position
-  TCW         ,                                                                // Turn ClockWise
-  TCCW        ,                                                                // Turn Counter ClockWise
-  MCW         ,                                                                // Motor ClockWise
-  MCCW        ,                                                                // Motor Counter ClockWise
-  DCC_END     ,                                                                // DCC Command END
-  DCC_INPUT   ,                                                                // DCC Command INPUT
-  DCC_CLEAR   ,                                                                // DCC Command CLEAR
-  DCC_T180    ,                                                                // DCC Command Turn 180
-  DCC_T1CW    ,                                                                // DCC Command Turn 1 Step ClockWise
-  DCC_T1CCW   ,                                                                // DCC Command Turn 1 Step Counter ClockWise
-  DCC_DCW     ,                                                                // DCC Command Direction ClockWise
-  DCC_DCCW    ,                                                                // DCC Command Direction Counter ClockWise
-  Button_T180 ,                                                                // Button T180  = Turn 180
-  Button_T1CW ,                                                                // Button Right = Turn 1 Step ClockWise
-  Button_T1CCW                                                                 // Button Left  = Turn 1 Step Counter ClockWise
+  STOP       ,                                                                 // Stop Turning
+  POS        ,                                                                 // Bridge in Position
+  TCW        ,                                                                 // Turn ClockWise
+  TCCW       ,                                                                 // Turn Counter ClockWise
+  MCW        ,                                                                 // Motor ClockWise
+  MCCW       ,                                                                 // Motor Counter ClockWise
+  DCC_END    ,                                                                 // DCC Command END
+  DCC_INPUT  ,                                                                 // DCC Command INPUT
+  DCC_CLEAR  ,                                                                 // DCC Command CLEAR
+  DCC_T180   ,                                                                 // DCC Command Turn 180
+  DCC_T1CW   ,                                                                 // DCC Command Turn 1 Step ClockWise
+  DCC_T1CCW  ,                                                                 // DCC Command Turn 1 Step Counter ClockWise
+  DCC_DCW    ,                                                                 // DCC Command Direction ClockWise
+  DCC_DCCW   ,                                                                 // DCC Command Direction Counter ClockWise
+  BUT_T180   ,                                                                 // Button T180  = Turn 180
+  BUT_T1CW   ,                                                                 // Button Right = Turn 1 Step ClockWise
+  BUT_T1CCW  ,                                                                 // Button Left  = Turn 1 Step Counter ClockWise
+  BUT_STORE                                                                    // Button T180  = Store current position as track 1
 }; // END enum
 
 uint8_t Directions[4][4] =                                                     // ToZone (vertical) - FromZone (
@@ -121,51 +134,51 @@ DCC_Accessory_Structure DCC_Accessory[DCC_Max_Accessories];                    /
 LiquidCrystal_I2C lcd(0x27, 20, 4);                                            // I2C Liquid Crystal Display on Address 0x27 with 20 characters by 4 rows
 
 
-void setup()
+//-----------------------------------------------------------------------------//
+void setup()                                                                   // Arduino Setup
 {
   Serial.begin(115200);
-  Serial.println(F("DCCNext-Controlled-Kato-Turntable_v1.45 -- (c)JMRRvS 2020-12-31"));
+  Serial.println(F("DCCNext-Controlled-Kato-Turntable_v1.47 -- (c)JMRRvS 2021-01-03"));
                                                                                // Serial print loaded sketch
   lcd.init();                                                                  // Initialise LCD
   lcd.backlight();                                                             // Switch backlight ON
   lcd.setCursor(0, 0);                                                         // Set cursor to first line and left corner
-//             01234567890123456789                                            // Sample text
+  //           01234567890123456789                                            // Sample text
   lcd.print(F("DCCNext Controlled  "));                                        // LCD print text
   lcd.setCursor(0, 1);                                                         // Set cursor to second line and left corner
-//             01234567890123456789                                            // Sample text
-  lcd.print(F("Kato Turntable v1.45"));                                        // LCD print text
+  //           01234567890123456789                                            // Sample text
+  lcd.print(F("Kato Turntable v1.47"));                                        // LCD print text
   lcd.setCursor(0, 2);                                                         // Set cursor to third line and left corner
-//             01234567890123456789                                            // Sample text
+  //           01234567890123456789                                            // Sample text
   lcd.print(F("--------------------"));                                        // LCD print text
   lcd.setCursor(0, 3);                                                         // Set cursor to fourth line and left corner
-//             01234567890123456789                                            // Sample text
   Turntable_Switch.setDebounceTime(10);                                        // Set Debounce Time to 10 milliseconds
-  Button_180.setDebounceTime(50);                                              // Set Debounce Time to 50 milliseconds
+  Button_T180.setDebounceTime(50);                                             // Set Debounce Time to 50 milliseconds
   Button_Right.setDebounceTime(50);                                            // Set Debounce Time to 50 milliseconds
   Button_Left.setDebounceTime(50);                                             // Set Debounce Time to 50 milliseconds
-  pinMode(DCC_Interrupt    , INPUT_PULLUP);                                    // Arduino Output Pin  2 = DCC signal = Interrupt 0
-                                                                               // Arduino Output Pin  3 = Turntable Trigger   = Turntable Cable Pin 1
+  pinMode(DCC_Interrupt      , INPUT_PULLUP);                                  // Arduino Input Pin   2 = DCC signal = Interrupt 0
+  // pinMode defined with ezButton function                                    // Arduino Input Pin   3 = Turntable Trigger   = Turntable Cable Pin 1
                                                                                // Arduino Ground Pin GND                      = Turntable Cable Pin 2
-                                                                               // Arduino Input  Pin  4 = Button Turn 180     = Turn 180
-  pinMode(Turntable_MotorM1, OUTPUT);                                          // Arduino Output Pin  5 = Turntable Motor     = Turntable Cable Pin 3
-  pinMode(Turntable_MotorM2, OUTPUT);                                          // Arduino Output Pin  6 = Turntable Motor     = Turntable Cable Pin 4
-  pinMode(BridgeRelayL1    , OUTPUT);                                          // Arduino Output Pin  7 = ULN2803A Pin 1+2    = Bridge Relay L1-
-  pinMode(BridgeRelayL2    , OUTPUT);                                          // Arduino Output Pin  8 = ULN2803A Pin 3+4    = Bridge Relay L2-
-  pinMode(Turntable_LockL2 , OUTPUT);                                          // Arduino Output Pin  9 = Turntable Lock L2   = Turntable Cable Pin 6
-  pinMode(Turntable_LockL1 , OUTPUT);                                          // Arduino Output Pin 10 = Turntable Lock L1   = Turntable Cable Pin 5
-                                                                               // Arduino Input  Pin 11 = Button Turn Right   = Turn 1 Step ClockWise
-                                                                               // Arduino Input  Pin 12 = Button Turn Left    = Turn 1 Step Counter ClockWise
-  pinMode(WatchdogLED      , OUTPUT);                                          // Arduino Output Pin 13 = DCCNext Red LED     = Watchdog Blink
-                                                                               // Arduino Output Pin 14 = Red LED             = Function Red
-                                                                               // Arduino Output Pin 15 = Green LED           = Function Green
-                                                                               // Arduino Output Pin 16 = Yellow LED          = TURN 180
-                                                                               // Arduino Output Pin 17 = Blue LED            = Bridge in Position
+  // pinMode defined with ezButton function                                    // Arduino Input  Pin  4 = Button Turn 180     = Turn 180
+  pinMode(Turntable_MotorM1  , OUTPUT);                                        // Arduino Output Pin  5 = Turntable Motor     = Turntable Cable Pin 3
+  pinMode(Turntable_MotorM2  , OUTPUT);                                        // Arduino Output Pin  6 = Turntable Motor     = Turntable Cable Pin 4
+  pinMode(BridgeRelayL1      , OUTPUT);                                        // Arduino Output Pin  7 = ULN2803A Pin 1+2    = Bridge Relay L1-
+  pinMode(BridgeRelayL2      , OUTPUT);                                        // Arduino Output Pin  8 = ULN2803A Pin 3+4    = Bridge Relay L2-
+  pinMode(Turntable_LockL2   , OUTPUT);                                        // Arduino Output Pin  9 = Turntable Lock L2   = Turntable Cable Pin 6
+  pinMode(Turntable_LockL1   , OUTPUT);                                        // Arduino Output Pin 10 = Turntable Lock L1   = Turntable Cable Pin 5
+  // pinMode defined with ezButton function                                    // Arduino Input  Pin 11 = Button Turn Right   = Turn 1 Step ClockWise
+  // pinMode defined with ezButton function                                    // Arduino Input  Pin 12 = Button Turn Left    = Turn 1 Step Counter ClockWise
+  pinMode(WatchdogLED        , OUTPUT);                                        // Arduino Output Pin 13 = DCCNext Red LED     = Watchdog Blink
+  pinMode(RedLED             , OUTPUT);                                        // Arduino Output Pin 14 = Red LED             = Function Red
+  pinMode(GreenLED           , OUTPUT);                                        // Arduino Output Pin 15 = Green LED           = Function Green
+  pinMode(YellowLED          , OUTPUT);                                        // Arduino Output Pin 16 = Yellow LED          = TURN 180
+  pinMode(Turntable_StatusLED, OUTPUT);                                        // Arduino Output Pin 17 = Blue LED            = Bridge in Position
   digitalWrite(Turntable_MotorM1, LOW);                                        // Arduino Output Pin  5 = Turntable Motor     = Turntable Cable Pin 3
   digitalWrite(Turntable_MotorM2, LOW);                                        // Arduino Output Pin  6 = Turntable Motor     = Turntable Cable Pin 4
-  digitalWrite(BridgeRelayL1, LOW);                                            // Arduino Output Pin  7 = ULN2803A Pin 1+2    = Bridge Relay L1-
-  digitalWrite(BridgeRelayL2, LOW);                                            // Arduino Output Pin  8 = ULN2803A Pin 3+4    = Bridge Relay L2-
-  digitalWrite(Turntable_LockL2, LOW);                                         // Arduino Output Pin  9 = Turntable Lock L2   = Turntable Cable Pin 6
-  digitalWrite(Turntable_LockL1, LOW);                                         // Arduino Output Pin 10 = Turntable Lock L1   = Turntable Cable Pin 5
+  digitalWrite(BridgeRelayL1    , LOW);                                        // Arduino Output Pin  7 = ULN2803A Pin 1+2    = Bridge Relay L1-
+  digitalWrite(BridgeRelayL2    , LOW);                                        // Arduino Output Pin  8 = ULN2803A Pin 3+4    = Bridge Relay L2-
+  digitalWrite(Turntable_LockL2 , LOW);                                        // Arduino Output Pin  9 = Turntable Lock L2   = Turntable Cable Pin 6
+  digitalWrite(Turntable_LockL1 , LOW);                                        // Arduino Output Pin 10 = Turntable Lock L1   = Turntable Cable Pin 5
 
   DCC.SetBasicAccessoryDecoderPacketHandler(BasicAccDecoderPacket_Handler, true);
   DCC_Accessory_ConfigureDecoderFunctions();
@@ -175,33 +188,26 @@ void setup()
     DCC_Accessory[AccDec].Button = 0;                                          // Switch OFF all DCC Accessory Decoders
   } // END for
 
-  for (int DCC_Action_LED = 14; DCC_Action_LED <= 17; DCC_Action_LED++)
-  {                                                                            // Short LED test at startup
-    pinMode(DCC_Action_LED, OUTPUT);                                           // DCC Action LEDs as Output
-    digitalWrite(DCC_Action_LED, HIGH);                                        // Switch LED ON at startup
-    delay(200);                                                                // LED ON for 200 msec
-    digitalWrite(DCC_Action_LED, LOW);                                         // Switch LED OFF at startup
-  } // END for
-  
+  DCC_Action_LED_Startup();                                                    // All DCC Action LEDs ON and OFF  
   Turntable_CurrentTrack = EEPROM.read(EE_Address);                            // Read Turntable Bridge Position from EEPROM
   if ((Turntable_CurrentTrack < 1) || (Turntable_CurrentTrack > maxTrack))
   {
     Turntable_CurrentTrack = 0;                                                // Reset CurrentTrack if EEPROM value is out of range
     Turntable_NewTrack = 0;                                                    // Reset NewTrack if EEPROM value is out of range
-    digitalWrite(Turntable_Status, LOW);                                       // Arduino Output LED 17 = Blue LED = Bridge in Position OFF
-//                    0123456789012345678901234                                // Sample text
+    digitalWrite(Turntable_StatusLED, LOW);                                    // Set Arduino Output Pin 17 = Blue LED = Bridge in Position OFF
+  //                  0123456789012345678901234                                // Sample text
     Serial.println(F("EEPROM status unknown.   "));                            // Serial print Function
   } // END if
   else
   {
     Turntable_NewTrack = Turntable_CurrentTrack;                               // Set new track to current track
-    digitalWrite(Turntable_Status, HIGH);                                      // Arduino Output LED 17 = Blue LED = Bridge in Position ON
+    digitalWrite(Turntable_StatusLED, HIGH);                                   // Set Arduino Output Pin 17 = Blue LED = Bridge in Position ON
     BridgeRelayInit();                                                         // Initialize Reverse Tracks
     BridgeRelayActive = true;                                                  // Activate Bridge Relay Set
     BridgeRelaySet();                                                          // Set Bride Relay Status = ULN2803A
   } // END else
   TurntableLockOff();                                                          // Disable Outputs to L293D
-//                0123456789012345678901234                                    // Sample text
+  //              0123456789012345678901234                                    // Sample text
   Serial.print(F("Startup_Status       --> "));                                // Serial print Function
   PrintStatus();                                                               // Print Actions and Track Numbers
   LCDPrintTrackText();                                                         // LCD print text
@@ -404,9 +410,9 @@ void DCC_Accessory_CheckStatus()
     {
       DCC_Accessory[AccDec].Finished = 0;
       DCC_Accessory[AccDec].offMilli = millis() + DCC_Accessory[AccDec].durationMilli;
-	  if (DCC_Accessory[AccDec].Address >= 228)
-	  {
-        Serial.println(F("------------------------------------------------------------------------------------------------------------------------------"));
+      if (DCC_Accessory[AccDec].Address >= 228)
+      {
+//        Serial.println(F("------------------------------------------------------------------------------------------------------------------------------"));
       } // END if
       Serial.print(F("Address: "));
       Serial.print(DCC_Accessory[AccDec].Address);
@@ -533,7 +539,7 @@ void DCC_Accessory_CheckStatus()
   
       } // END switch
 
-//                    0123456789012345678901234                                // Sample text
+  //                  0123456789012345678901234                                // Sample text
       Serial.print(F("DCC_ACC_Status       --> "));                            // Serial print Function
       PrintStatus();                                                           // Print Actions and Track Numbers
       Serial.println(F("------------------------------------------------------------------------------------------------------------------------------"));
@@ -551,9 +557,93 @@ void DCC_Accessory_CheckStatus()
 
 void Button_CheckStatus()
 {
-  Button_180.loop();                                                           // Check debounce and update the state of the button
+  Button_T180.loop();                                                          // Check debounce and update the state of the button
   Button_Right.loop();                                                         // Check debounce and update the state of the button
   Button_Left.loop();                                                          // Check debounce and update the state of the button
+  Button_T180_CurrentState = Button_T180.getState();                           // HIGH = Released, LOW = Pressed
+  if (Button_T180_LastState == HIGH && Button_T180_CurrentState == LOW)        // LOW = Pressed
+  {
+    Button_T180_IsPressed = true;
+    Button_T180_IsPressing = true;
+    Button_T180_ShortPressed = false;
+    Button_T180_LongPressed = false;
+    Button_T180_PressedTime = millis();
+//    Serial.println();
+//    Serial.print("Button_T180_PressedTime: ");
+//    Serial.println(Button_T180_PressedTime);
+  } // END if
+  else if (Button_T180_LastState == LOW && Button_T180_CurrentState == HIGH)   // HIGH = Released
+  {
+    Button_T180_IsPressing = false;
+    Button_T180_ReleasedTime = millis();
+    Button_T180_PressTime = Button_T180_ReleasedTime - Button_T180_PressedTime;
+    if (Button_T180_PressTime < Button_T180_ShortPressTime)
+    {
+      Button_T180_ShortPressed = true;
+    } // END if
+    else if (Button_T180_LongPressed)
+    {
+//      Serial.println("Button Released.");
+      Button_T180_LongPressed = false;
+    } // END else if
+  } // END else if
+  if (Button_T180_IsPressing && !Button_T180_LongPressed)
+  {
+    Button_T180_PressTime = millis() - Button_T180_PressedTime;
+    if (Button_T180_PressTime >= Button_T180_LongPressTime)
+    {
+      Button_T180_LongPressed = true;
+    }
+  }
+  if (Button_T180_ShortPressed)                                                // Button T180 Pressed : TURN 180
+  {
+    Button_T180_ShortPressed = false;
+    DCC_Action_LED = 16;                                                       // Set Arduino Output Pin 16 = Yellow LED
+    if (Turntable_CurrentTrack <= (maxTrack / 2))
+    {
+      Turntable_NewTrack = Turntable_CurrentTrack + (maxTrack / 2);
+    } // END if
+    else
+    {
+      Turntable_NewTrack = Turntable_CurrentTrack - (maxTrack / 2);
+    } // END else
+    Turntable_OldAction = Turntable_NewAction;                                 // Switch Old Action
+    Turntable_NewAction = BUT_T180;                                            // Action: Turn Motor (maxTrack / 2) Steps
+    Turntable_Action = BUT_T180;                                               // Requested Action = BUT_T180
+    Serial.println();                                                          // Serial print Function
+    //              0123456789012345678901234                                  // Sample text
+    Serial.print(F("ShortPressTime: "));                                       // Serial print Function
+    Serial.print(Button_T180_PressTime);                                       // Serial print Function
+    if (Button_T180_PressTime < 100)
+    {
+      Serial.print(F("   --> "));                                              // Serial print Function
+    } // END if
+    else if (Button_T180_PressTime < 1000)
+    {
+      Serial.print(F("  --> "));                                               // Serial print Function
+    } // END if
+    else
+    {
+      Serial.print(F(" --> "));                                                // Serial print Function
+    } // END if
+    PrintStatus();                                                             // Print Actions and Track Numbers
+  }
+  if (Button_T180_IsPressed && Button_T180_LongPressed)                        // Button T180 Long Pressed : Store current position as track 1
+  {
+    Button_T180_IsPressed = false;
+    DCC_Action_LED = 16;                                                       // Set Arduino Output Pin 16 = Yellow LED
+    Turntable_OldAction = Turntable_NewAction;                                 // Switch Old Action
+    Turntable_NewAction = BUT_STORE;                                           // Action: Store current position as track 1
+    Turntable_Action = BUT_STORE;                                              // Requested Action = BUT_STORE
+    Serial.println();                                                          // Serial print Function
+    //              0123456789012345678901234                                  // Sample text
+    Serial.print(F("LongPressTime: "));                                        // Serial print Function
+    Serial.print(Button_T180_PressTime);                                       // Serial print Function
+    Serial.print(F("  --> "));                                                 // Serial print Function
+    PrintStatus();                                                             // Print Actions and Track Numbers
+  }
+  Button_T180_LastState = Button_T180_CurrentState;
+  
   if (Button_Right.isPressed())                                                // Button Right Pressed : Turn 1 Step ClockWise
   {
     DCC_Action_LED = 14;                                                       // Set Arduino Output Pin 14 = Red LED
@@ -563,13 +653,12 @@ void Button_CheckStatus()
       Turntable_NewTrack = 1;                                                  // Track (1)
     } // END if
     Turntable_OldAction = Turntable_NewAction;                                 // Switch Old Action
-    Turntable_NewAction = Button_T1CW;                                         // Action: Turn Motor 1 Step ClockWise
-    Turntable_Action = Button_T1CW;                                            // Requested Action = Button_T1CW
-//                  0123456789012345678901234                                  // Sample text
+    Turntable_NewAction = BUT_T1CW;                                            // Action: Turn Motor 1 Step ClockWise
+    Turntable_Action = BUT_T1CW;                                               // Requested Action = BUT_T1CW
+  //                0123456789012345678901234                                  // Sample text
     Serial.println();
     Serial.print(F("BUT_T1CW Status      --> "));                              // Serial print Function
     PrintStatus();                                                             // Print Actions and Track Numbers
-////LCDPrintTrackText();                                                       // LCD print text
   } // END if
 
   if (Button_Left.isPressed())                                                 // Button Left Pressed: Turn 1 Step Counter ClockWise
@@ -581,34 +670,12 @@ void Button_CheckStatus()
       Turntable_NewTrack = maxTrack;                                           // Track (maxTrack)
     } // END if
     Turntable_OldAction = Turntable_NewAction;                                 // Switch Old Action
-    Turntable_NewAction = Button_T1CCW;                                        // Action: Turn Motor 1 Step Counter ClockWise
-    Turntable_Action = Button_T1CCW;                                           // Requested Action = Button_T1CCW
-//                  0123456789012345678901234                                  // Sample text
+    Turntable_NewAction = BUT_T1CCW;                                           // Action: Turn Motor 1 Step Counter ClockWise
+    Turntable_Action = BUT_T1CCW;                                              // Requested Action = BUT_T1CCW
+  //                0123456789012345678901234                                  // Sample text
     Serial.println();
     Serial.print(F("BUT_T1CCW Status     --> "));                              // Serial print Function
     PrintStatus();                                                             // Print Actions and Track Numbers
-////LCDPrintTrackText();                                                       // LCD print text
-  } // END if
-
-  if (Button_180.isPressed())                                                  // Button T180 Pressed : TURN 180
-  {
-    DCC_Action_LED = 16;                                                       // Set Arduino Output Pin 16 = Yellow LED
-    if (Turntable_CurrentTrack <= (maxTrack / 2))
-    {
-      Turntable_NewTrack = Turntable_CurrentTrack + (maxTrack / 2);
-    } // END if
-    else
-    {
-      Turntable_NewTrack = Turntable_CurrentTrack - (maxTrack / 2);
-    } // END else
-    Turntable_OldAction = Turntable_NewAction;                                 // Switch Old Action
-    Turntable_NewAction = Button_T180;                                         // Action: Turn Motor (maxTrack / 2) Steps
-    Turntable_Action = Button_T180;                                            // Requested Action = Button_T180
-//                  0123456789012345678901234                                  // Sample text
-    Serial.println();
-    Serial.print(F("BUT_T180 Status      --> "));                              // Serial print Function
-    PrintStatus();                                                             // Print Actions and Track Numbers
-////LCDPrintTrackText();                                                       // LCD print text
   } // END if
 } // END Button_CheckStatus
 
@@ -620,7 +687,7 @@ void Turntable_CheckSwitch()                                                   /
   {
     Turntable_OldAction = Turntable_NewAction;                                 // Switch Old Action
     Turntable_NewAction = POS;                                                 // Bridge in Position
-//                  0123456789012345678901234                                  // Sample text
+  //                0123456789012345678901234                                  // Sample text
     Serial.print(F("TT_CheckSwitch       --> "));                              // Serial print Function
     PrintStatus();                                                             // Print Actions and Track Numbers
   } // END if
@@ -629,9 +696,13 @@ void Turntable_CheckSwitch()                                                   /
 
 void Turntable_StoreTrack()                                                    // Store Track Position in EEPROM
 {
-  digitalWrite(Turntable_Status, HIGH);                                        // LED ON = Arduino Onboard LED 17 = Blue LED = Bridge in Position ON
-  digitalWrite(DCC_Action_LED  , LOW);                                         // LED OFF
+  digitalWrite(Turntable_StatusLED, HIGH);                                     // Set Arduino Onboard LED 17 = Blue LED = Bridge in Position ON
+  digitalWrite(DCC_Action_LED     , LOW);                                      // LED OFF
   EEPROM.update(EE_Address, Turntable_CurrentTrack);                           // Store Turntable bridge position into EEPROM
+  Serial.print(F("Track "));                                                   // Serial print Function
+  Serial.print(Turntable_CurrentTrack);                                        // Serial print Function
+  Serial.print(F(" stored at EEPROM address "));                               // Serial print Function
+  Serial.println(EE_Address);                                                  // Serial print Function
 } // END Turntable_StoreTrack
 
 
@@ -646,7 +717,7 @@ void Turntable_CheckPos()                                                      /
         Turntable_SetMotorSpeed(speedValue);                                   // Motor Stop - MCW
         Turntable_OldAction = Turntable_NewAction;                             // Switch Old Action
         Turntable_NewAction = STOP;                                            // Action: STOP
-//                      0123456789012345678901234                              // Sample text
+  //                    0123456789012345678901234                              // Sample text
         Serial.print(F("TT_CheckPos MCW      --> "));                          // Serial print Function
         PrintStatus();                                                         // Print Actions and Track Numbers
         break; // END case MCW
@@ -656,13 +727,13 @@ void Turntable_CheckPos()                                                      /
         Turntable_SetMotorSpeed(speedValue);                                   // Motor Stop - MCCW
         Turntable_OldAction = Turntable_NewAction;                             // Switch Old Action
         Turntable_NewAction = STOP;                                            // Set New Action: STOP
-//                      0123456789012345678901234                              // Sample text
+  //                    0123456789012345678901234                              // Sample text
         Serial.print(F("TT_CheckPos MCCW     --> "));                          // Serial print Function
         PrintStatus();                                                         // Print Actions and Track Numbers
         break; // END case MCCW
         
       default:                                                                 // None of the above
-//                      0123456789012345678901234                              // Sample text
+  //                    0123456789012345678901234                              // Sample text
         Serial.print(F("TT_CheckPos "));                                       // Serial print Function
         Serial.print(Turntable_OldAction);                                     // Print OldAction
         Serial.print(F(" --> "));                                              // Serial print Function
@@ -676,27 +747,27 @@ void Turntable_CheckPos()                                                      /
     switch (Turntable_OldAction)                                               // Check OldAction
     {
       case MCW:                                                                // Turntable turning ClockWise
-        digitalWrite(Turntable_Status, LOW);                                   // LED OFF = Arduino Onboard LED 17 = Blue LED = Bridge in Position OFF
-        digitalWrite(DCC_Action_LED  , HIGH);                                  // LED ON  = Action still active
+        digitalWrite(Turntable_StatusLED, LOW);                                // Set Arduino Onboard LED 17 = Blue LED = Bridge in Position OFF
+        digitalWrite(DCC_Action_LED  , HIGH);                                  // Set DCC Action LED ON
         Turntable_OldAction = Turntable_NewAction;                             // Switch Old Action
         Turntable_NewAction = MCW;                                             // Action: MCW
-//                      0123456789012345678901234                              // Sample text
+  //                    0123456789012345678901234                              // Sample text
         Serial.print(F("TT_CheckPos MCW      --> "));                          // Serial print Function
         PrintStatus();                                                         // Print Actions and Track Numbers
         break; // END case MCW
         
       case MCCW:                                                               // Turntable turning Counter ClockWise
-        digitalWrite(Turntable_Status, LOW);                                   // LED OFF = Arduino Onboard LED 17 = Blue LED = Bridge in Position OFF
-        digitalWrite(DCC_Action_LED  , HIGH);                                  // LED ON  = Action still active
+        digitalWrite(Turntable_StatusLED, LOW);                                // Set Arduino Onboard LED 17 = Blue LED = Bridge in Position OFF
+        digitalWrite(DCC_Action_LED  , HIGH);                                  // Set DCC Action LED ON
         Turntable_OldAction = Turntable_NewAction;                             // Switch Old Action
         Turntable_NewAction = MCCW;                                            // Set New Action: MCCW
-//                      0123456789012345678901234                              // Sample text
+  //                    0123456789012345678901234                              // Sample text
         Serial.print(F("TT_CheckPos MCCW     --> "));                          // Serial print Function
         PrintStatus();                                                         // Print Actions and Track Numbers
         break; // END case MCCW
         
       default:                                                                 // None of the above
-//                      0123456789012345678901234                              // Sample text
+  //                    0123456789012345678901234                              // Sample text
         Serial.print(F("TT_CheckPos "));                                       // Serial print Function
         Serial.print(Turntable_OldAction);                                     // Print OldAction
         Serial.print(F(" --> "));                                              // Serial print Function
@@ -706,228 +777,6 @@ void Turntable_CheckPos()                                                      /
     } // END switch
   } // END else
 } // END Turntable_CheckPos
-
-
-void loop()                                                                    // Main Program
-{
-  unsigned long currentMillis = millis();
-  if ( currentMillis - WatchdogMillis >= WatchdogInterval )
-  {
-    WatchdogMillis = currentMillis;
-    WatchdogState = !WatchdogState;
-    digitalWrite(WatchdogLED, WatchdogState);
-  }
-  DCC_Accessory_CheckStatus();                                                 // Check DCC Accessory Status
-  Button_CheckStatus();                                                        // Check Button Status
-  Turntable_CheckSwitch();                                                     // Check Kato Turntable Pin 1
-  BridgeRelayCheck();                                                          // Check Bride Relay Status = ULN2803A
-  TurntableLockCheck();                                                        // Check Turntable Lock Status
-  if ((Turntable_OldAction == STOP) && (Turntable_NewAction == DCC_INPUT))
-  {
-    Turntable_Init();                                                          // Action: Initialize Turntable
-    Turntable_OldAction = Turntable_NewAction;                                 // Switch Old Action
-    Turntable_NewAction = DCC_INPUT;                                           // Action: Initialize Turntable
-//                  0123456789012345678901234                                  // Sample text
-    Serial.print(F("(..)DCC_INPUT         -> "));                              // Serial print Function
-    PrintStatus();                                                             // Print Actions and Track Numbers
-  } // END if
-
-  if ((Turntable_OldAction == STOP) && (Turntable_NewAction == DCC_CLEAR))
-  {
-    Turntable_Clear();                                                         // Action: Set Turntable Track to 1
-    Turntable_OldAction = Turntable_NewAction;                                 // Switch Old Action
-    Turntable_NewAction = DCC_CLEAR;                                           // Action: Set Turntable Track to 1
-//                  0123456789012345678901234                                  // Sample text
-    Serial.print(F("(..)DCC_CLEAR        --> "));                              // Serial print Function
-    PrintStatus();                                                             // Print Actions and Track Numbers
-  } // END if
-
-  if ((Turntable_OldAction == STOP) && (Turntable_NewAction == DCC_END))
-  {
-    Turntable_End();                                                           // End all actions
-    Turntable_OldAction = STOP;                                                // 
-    Turntable_NewAction = STOP;                                                // 
-//                  0123456789012345678901234                                  // Sample text
-    Serial.print(F("(..)DCC_END          --> "));                              // Serial print Function
-    PrintStatus();                                                             // Print Actions and Track Numbers
-  } // END if
-
-  if ((Turntable_OldAction != DCC_T180) && (Turntable_NewAction == DCC_T180))
-  {
-    if ((Turntable_CurrentTrack >= 1) && (Turntable_CurrentTrack <= 18))
-    {
-      speedValue = maxSpeed;                                                   // Positive = Direction ClockWise - DCC_T180
-      Turntable_SetMotorSpeed(speedValue);                                     // Motor Forward - DCC_T180
-      Turntable_OldAction = Turntable_NewAction;                               // Switch Old Action
-      Turntable_NewAction = MCW;                                               // Action: Move Motor ClockWise
-    } // END if
-    else
-    {
-      speedValue = -maxSpeed;                                                  // Negative = Direction Counter ClockWise - DCC_T180
-      Turntable_SetMotorSpeed(speedValue);                                     // Motor Backward - DCC_T180
-      Turntable_OldAction = Turntable_NewAction;                               // Switch Old Action
-      Turntable_NewAction = MCCW;                                              // Action: Move Motor Counter ClockWise
-    } // END else
-//                  0123456789012345678901234                                  // Sample text
-    Serial.print(F("(..)DCC_T180         --> "));                              // Serial print Function
-    PrintStatus();                                                             // Print Actions and Track Numbers
-  } // END if
-
-  if ((Turntable_OldAction != DCC_T1CW) && (Turntable_NewAction == DCC_T1CW))
-  {
-    speedValue = maxSpeed;                                                     // Positive = Direction ClockWise - DCC_T1CW
-    Turntable_SetMotorSpeed(speedValue);                                       // Motor Forward - DCC_T1CW
-    Turntable_OldAction = Turntable_NewAction;                                 // Switch Old Action
-    Turntable_NewAction = MCW;                                                 // Action: Move Motor ClockWise
-//                  0123456789012345678901234                                  // Sample text
-    Serial.print(F("(..)Check T1CW       --> "));                              // Serial print Function
-    PrintStatus();                                                             // Print Actions and Track Numbers
-  } // END if
-
-  if ((Turntable_OldAction != DCC_T1CCW) && (Turntable_NewAction == DCC_T1CCW))
-  {
-    speedValue = -maxSpeed;                                                    // Negative = Direction Counter ClockWise - DCC_T1CCW
-    Turntable_SetMotorSpeed(speedValue);                                       // Motor Reverse - DCC_T1CCW
-    Turntable_OldAction = Turntable_NewAction;                                 // Switch Old Action
-    Turntable_NewAction = MCCW;                                                // Action: Move Motor Counter ClockWise
-//                  0123456789012345678901234                                  // Sample text
-    Serial.print(F("(..)Check T1CCW      --> "));                              // Serial print Function
-    PrintStatus();                                                             // Print Actions and Track Numbers
-  } // END if
-
-  if ((Turntable_OldAction != Button_T180) && (Turntable_NewAction == Button_T180))
-  {
-    if ((Turntable_CurrentTrack >= 1) && (Turntable_CurrentTrack <= 18))
-    {
-      speedValue = maxSpeed;                                                   // Positive = Direction ClockWise - Button_T180
-      Turntable_SetMotorSpeed(speedValue);                                     // Motor Forward - Button_T180
-      Turntable_OldAction = Turntable_NewAction;                               // Switch Old Action
-      Turntable_NewAction = MCW;                                               // Action: Move Motor ClockWise
-    } // END if
-    else
-    {
-      speedValue = -maxSpeed;                                                  // Negative = Direction Counter ClockWise - Button_T180
-      Turntable_SetMotorSpeed(speedValue);                                     // Motor Backward - Button_T180
-      Turntable_OldAction = Turntable_NewAction;                               // Switch Old Action
-      Turntable_NewAction = MCCW;                                              // Action: Move Motor Counter ClockWise
-    } // END else
-//                  0123456789012345678901234                                  // Sample text
-    Serial.print(F("(..)BUT_T180         --> "));                              // Serial print Function
-    PrintStatus();                                                             // Print Actions and Track Numbers
-  } // END if
-
-  if ((Turntable_OldAction != Button_T1CW) && (Turntable_NewAction == Button_T1CW))
-  {
-    speedValue = maxSpeed;                                                     // Positive = Direction ClockWise - Button_T1CW
-    Turntable_SetMotorSpeed(speedValue);                                       // Motor Forward - Button_T1CW
-    Turntable_OldAction = Turntable_NewAction;                                 // Switch Old Action
-    Turntable_NewAction = MCW;                                                 // Action: Move Motor ClockWise
-//                  0123456789012345678901234                                  // Sample text
-    Serial.print(F("(..)BUT_T1CW         --> "));                              // Serial print Function
-    PrintStatus();                                                             // Print Actions and Track Numbers
-  } // END if
-
-  if ((Turntable_OldAction != Button_T1CCW) && (Turntable_NewAction == Button_T1CCW))
-  {
-    speedValue = -maxSpeed;                                                    // Negative = Direction Counter ClockWise - Button_T1CCW
-    Turntable_SetMotorSpeed(speedValue);                                       // Motor Reverse - Button_T1CCW
-    Turntable_OldAction = Turntable_NewAction;                                 // Switch Old Action
-    Turntable_NewAction = MCCW;                                                // Action: Move Motor Counter ClockWise
-//                  0123456789012345678901234                                  // Sample text
-    Serial.print(F("(..)BUT_T1CCW        --> "));                              // Serial print Function
-    PrintStatus();                                                             // Print Actions and Track Numbers
-  } // END if
-
-  if ((Turntable_OldAction != TCW) && (Turntable_NewAction == TCW))
-  {
-    speedValue = maxSpeed;                                                     // Positive = Direction ClockWise - TCW
-    Turntable_SetMotorSpeed(speedValue);                                       // Motor Forward - TCW
-    Turntable_OldAction = Turntable_NewAction;                                 // Switch Old Action
-    Turntable_NewAction = MCW;                                                 // Action: Move Motor ClockWise
-//                  0123456789012345678901234                                  // Sample text
-    Serial.print(F("(..)Check TCW        --> "));                              // Serial print Function
-    PrintStatus();                                                             // Print Actions and Track Numbers
-  } // END if
-
-  if ((Turntable_OldAction != TCCW) && (Turntable_NewAction == TCCW))
-  {
-    speedValue = -maxSpeed;                                                    // Negative = Direction Counter ClockWise - TCCW
-    Turntable_SetMotorSpeed(speedValue);                                       // Motor Reverse - TCCW
-    Turntable_OldAction = Turntable_NewAction;                                 // Switch Old Action
-    Turntable_NewAction = MCCW;                                                // Action: Move Motor Counter ClockWise
-//                  0123456789012345678901234                                  // Sample text
-    Serial.print(F("(..)Check TCCW       --> "));                              // Serial print Function
-    PrintStatus();                                                             // Print Actions and Track Numbers
-  } // END if
-
-  if ((Turntable_OldAction == MCW) && (Turntable_NewAction == POS))            // Move ClockWise and Turntable in Position
-  {
-    Turntable_CurrentTrack = Turntable_CurrentTrack + 1;
-    if (Turntable_CurrentTrack > maxTrack)                                     // From Track 36 to Track 1
-    {
-      Turntable_CurrentTrack = 1;                                              // Track (1)
-    } // END if
-    Turntable_CheckPos();                                                      // Check if Bridge on wanted track position
-//                  0123456789012345678901234                                  // Sample text
-    Serial.print(F("(..)T+1 - Check MCW  --> "));                              // Serial print Function
-    PrintStatus();                                                             // Print Actions and Track Numbers
-    LCDPrintTrackStatus();                                                     // LCD print text
-  } // END if
-
-  if ((Turntable_OldAction == MCCW) && (Turntable_NewAction == POS))           // Move Counter ClockWise and Turntable in Position
-  {
-    Turntable_CurrentTrack = Turntable_CurrentTrack - 1;
-    if (Turntable_CurrentTrack == 0)                                           // From Track 1 to Track 36
-    {
-      Turntable_CurrentTrack = maxTrack;                                       // Track (maxTrack)
-    } // END if
-    Turntable_CheckPos();                                                      // Check if Bridge in Position
-//                  0123456789012345678901234                                  // Sample text
-    Serial.print(F("(..)T-1 - Check MCCW --> "));                              // Serial print Function
-    PrintStatus();                                                             // Print Actions and Track Numbers
-    LCDPrintTrackStatus();                                                     // LCD print text
-  } // END if
-
-  if ((Turntable_OldAction == DCC_DCW) && (Turntable_NewAction == POS))        // Move ClockWise and Turntable in Position
-  {
-    Turntable_CurrentTrack = Turntable_CurrentTrack + 1;
-    if (Turntable_CurrentTrack > maxTrack)                                     // From Track 36 to Track 1
-    {
-      Turntable_CurrentTrack = 1;                                              // Track (1)
-    } // END if
-    Turntable_CheckPos();                                                      // Check if Bridge in Position
-//                  0123456789012345678901234                                  // Sample text
-    Serial.print(F("(..)T+1 - Check DCW  --> "));                              // Serial print Function
-    PrintStatus();                                                             // Print Actions and Track Numbers
-    LCDPrintTrackStatus();                                                     // LCD print text
-  } // END if
-  
-  if ((Turntable_OldAction == DCC_DCCW) && (Turntable_NewAction == POS))       // Move Counter ClockWise and Turntable in Position
-  {
-    Turntable_CurrentTrack = Turntable_CurrentTrack - 1;
-    if (Turntable_CurrentTrack == 0)                                           // From Track 1 to Track 36
-    {
-      Turntable_CurrentTrack = maxTrack;                                       // Track (maxTrack)
-    } // END if
-    Turntable_CheckPos();                                                      // Check if Bridge in Position
-//                  0123456789012345678901234                                  // Sample text
-    Serial.print(F("(..)T-1 - Check DCCW --> "));                              // Serial print Function
-    PrintStatus();                                                             // Print Actions and Track Numbers
-    LCDPrintTrackStatus();                                                     // LCD print text
-  } // END if
-  
-  if ((Turntable_OldAction == POS) && (Turntable_NewAction == STOP))           // STOP
-  {
-    Turntable_StoreTrack();                                                    // Store Track Position in EEPROM
-    BridgeRelayActive = true;                                                  // Activate Bridge Relay Set
-    BridgeRelaySet();                                                          // Set Bride Relay Status = ULN2803A
-    Turntable_OldAction = Turntable_NewAction;                                 // Switch Old Action
-    Turntable_NewAction = STOP;                                                // Action: STOP
-//                  0123456789012345678901234                                  // Sample text
-    Serial.print(F("(..)STOP             --> "));                              // Serial print Function
-    PrintStatus();                                                             // Print Actions and Track Numbers
-  } // END if
-} // END loop
 
 
 void DCC_Accessory_LED_OFF()                                                   // All LEDs OFF
@@ -940,33 +789,44 @@ void DCC_Accessory_LED_OFF()                                                   /
 } // END DCC_Accessory_LED_OFF
 
 
+void DCC_Action_LED_Startup()                                                  // All DCC Action LEDs ON and OFF
+{
+  for (int DCC_Action_LED = 14; DCC_Action_LED <= 17; DCC_Action_LED++)        // Loop DCC Action LED
+  {                                                                            // Short LED test at startup
+    digitalWrite(DCC_Action_LED, HIGH);                                        // Switch LED ON
+    delay(200);                                                                // LED ON for 200 msec
+    digitalWrite(DCC_Action_LED, LOW);                                         // Switch LED OFF
+  } // END for
+} // END DCC_Action_LED_Startup
+
+
 void Turntable_Init()                                                          // Start Initialize Turntable Procedure
 {
-  digitalWrite(Turntable_Status, LOW);                                         // LED OFF = Arduino Onboard LED 17 = Blue LED = Bridge in Position OFF
-  digitalWrite(DCC_Action_LED  , HIGH);                                        // LED ON
+  digitalWrite(Turntable_StatusLED, LOW);                                      // Set Arduino Onboard LED 17 = Blue LED = Bridge in Position OFF
+  digitalWrite(DCC_Action_LED, HIGH);                                          // Set DCC Action LED ON
 } // END Turntable_Init
 
 
 void Turntable_Clear()                                                         // Simple Blink Action to comfirm DCC_CLEAR
 {
-  digitalWrite(DCC_Action_LED  , LOW);                                         // LED OFF
+  digitalWrite(DCC_Action_LED, LOW);                                           // Set DCC Action LED OFF
   delay(200);
-  digitalWrite(DCC_Action_LED  , HIGH);                                        // LED ON
+  digitalWrite(DCC_Action_LED, HIGH);                                          // Set DCC Action LED ON
   delay(200);
-  digitalWrite(DCC_Action_LED  , LOW);                                         // LED OFF
+  digitalWrite(DCC_Action_LED, LOW);                                           // Set DCC Action LED OFF
   delay(200);
-  digitalWrite(DCC_Action_LED  , HIGH);                                        // LED ON
+  digitalWrite(DCC_Action_LED, HIGH);                                          // Set DCC Action LED ON
   delay(200);
-  digitalWrite(DCC_Action_LED  , LOW);                                         // LED OFF
+  digitalWrite(DCC_Action_LED, LOW);                                           // Set DCC Action LED OFF
   delay(1000);
-  digitalWrite(DCC_Action_LED  , HIGH);                                        // LED ON
+  digitalWrite(DCC_Action_LED, HIGH);                                          // Set DCC Action LED ON
 } // END Turntable_Clear
 
 
 void Turntable_End()                                                           // End Initialize Turntable Procedure
 {
-  digitalWrite(Turntable_Status, LOW);                                         // LED OFF = Arduino Onboard LED 17 = Blue LED = Bridge in Position OFF
-  digitalWrite(DCC_Action_LED  , LOW);                                         // LED OFF
+  digitalWrite(Turntable_StatusLED, LOW);                                      // Set Arduino Output Pin 17 = Blue LED = Bridge in Position OFF
+  digitalWrite(DCC_Action_LED, LOW);                                           // Set DCC Action LED OFF
 } // END Turntable_End
 
 void BridgeRelayInit()                                                         //  Initialize Reverse Tracks
@@ -1070,7 +930,7 @@ void BridgeRelayOnNormal()                                                     /
 {
   digitalWrite(BridgeRelayL1, HIGH);                                           // Arduino Output Pin 7 ON  = ULN2803A Pin 1+2       = Bridge Relay L1-
   digitalWrite(BridgeRelayL2, LOW);                                            // Arduino Output Pin 8 OFF = ULN2803A Pin 3+4       = Bridge Relay L2-
-//                0123456789012345678901234                                    // Sample text
+  //              0123456789012345678901234                                    // Sample text
   Serial.println(F("Bridge Relay: Normal     "));                              // Serial print Function
 } // END BridgeRelayOnNormal
 
@@ -1079,7 +939,7 @@ void BridgeRelayOnReversed()                                                   /
 {
   digitalWrite(BridgeRelayL1, LOW);                                            // Arduino Output Pin 7 OFF = ULN2803A Pin 1+2       = Bridge Relay L1-
   digitalWrite(BridgeRelayL2, HIGH);                                           // Arduino Output Pin 8 ON  = ULN2803A Pin 3+4       = Bridge Relay L2-
-//                0123456789012345678901234                                    // Sample text
+  //              0123456789012345678901234                                    // Sample text
   Serial.println(F("Bridge Relay: Reversed   "));                              // Serial print Function
 } // END BridgeRelayOnReversed
 
@@ -1127,8 +987,8 @@ void GetDirection()                                                            /
   Serial.print(F("To Zone: "));                                                // Serial print Function
   Serial.println(ToZone);
 
-//       FromZone
-//      0  1  2  3
+  //     FromZone
+  //    0  1  2  3
 // T    |  |  |  |
 // o 0-{0, 1, 1, 0}
 // Z 1-{0, 0, 1, 0}
@@ -1246,6 +1106,10 @@ void PrintStatus()                                                             /
   }
   Serial.print(Turntable_NewTrack);                                            // Serial print value
   Serial.print(F(", DCC_Action_LED: "));                                       // Serial print text
+  if (DCC_Action_LED < 10)
+  {
+    Serial.print(F(" "));                                                      // Serial print text
+  }
   Serial.print(DCC_Action_LED);                                                // Serial print value
   Serial.print(F(", Speed: "));                                                // Serial print text
   if (speedValue == 0)
@@ -1263,13 +1127,13 @@ void PrintStatus()                                                             /
 
 void LCDPrintTrackStatus()
 {
-//             01234567890123456789                                            // Sample text
+  //           01234567890123456789                                            // Sample text
 //lcd.print(F("Track: .. to .. #..."));                                        // LCD print text
   if (Turntable_CurrentTrack < 10)
   {
     lcd.setCursor(7, 3);                                                       // Set cursor to first line and 8th character
     lcd.print(F(" "));                                                         // LCD print text
-//  lcd.setCursor(8, 3);                                                       // Set cursor to first line and 9th character
+  //lcd.setCursor(8, 3);                                                       // Set cursor to first line and 9th character
   } // END if
   else
   {
@@ -1280,7 +1144,7 @@ void LCDPrintTrackStatus()
   {
     lcd.setCursor(13, 3);                                                      // Set cursor to first line and 14th character
     lcd.print(F(" "));                                                         // LCD print text
-//  lcd.setCursor(14, 3);                                                      // Set cursor to first line and 15th character
+  //lcd.setCursor(14, 3);                                                      // Set cursor to first line and 15th character
   } // END if
   else
   {
@@ -1316,7 +1180,7 @@ void LCDPrintTrackStatus()
 void LCDPrintTrackText()                                                       // LCD print text
 {
   lcd.setCursor(0, 3);                                                         // Set cursor to fourth line and left corner
-//             01234567890123456789                                            // Sample text
+  //           01234567890123456789                                            // Sample text
   lcd.print(F("Track:    to        "));                                        // LCD print text
 } // END LCDPrintTrackText
 
@@ -1338,16 +1202,16 @@ void LCDPrintAction()
 void LCDPrintClear()
 {
   lcd.setCursor(0, 0);                                                         // Set cursor to first line and left corner
-//             01234567890123456789                                            // Sample text
+  //           01234567890123456789                                            // Sample text
   lcd.print(F("                    "));                                        // Clear text
   lcd.setCursor(0, 1);                                                         // Set cursor to second line and left corner
-//             01234567890123456789                                            // Sample text
+  //           01234567890123456789                                            // Sample text
   lcd.print(F("                    "));                                        // Clear text
   lcd.setCursor(0, 2);                                                         // Set cursor to third line and left corner
-//             01234567890123456789                                            // Sample text
+  //           01234567890123456789                                            // Sample text
   lcd.print(F("                    "));                                        // Clear text
   lcd.setCursor(0, 3);                                                         // Set cursor to fourth line and left corner
-//             01234567890123456789                                            // Sample text
+  //           01234567890123456789                                            // Sample text
   lcd.print(F("                    "));                                        // Clear text
 }
 
@@ -1368,7 +1232,7 @@ void TurntableLockOff()                                                        /
   TurntableLockActive = false;
   digitalWrite(Turntable_LockL1, LOW);                                         // Arduino Output Pin 10 = Turntable Lock L1   = Turntable Cable Pin 5
   digitalWrite(Turntable_LockL2, LOW);                                         // Arduino Output Pin  9 = Turntable Lock L2   = Turntable Cable Pin 6
-  Serial.println(F("Turntable Lock Off    "));                                 // Serial print Function
+  Serial.println(F("Turntable Lock Off"));                                     // Serial print Function
   Serial.println(F("------------------------------------------------------------------------------------------------------------------------------"));
 } // END TurntableLockOff
 
@@ -1379,7 +1243,7 @@ void TurntableLockResetLock()                                                  /
   digitalWrite(Turntable_LockL2, LOW);                                         // Arduino Output Pin  9 = Turntable Lock L2   = Turntable Cable Pin 6
   TurntableLockMillis = millis() + TurntableLockInterval;                      // Set Turntable Lock Active Timer
   TurntableLockActive = true;
-  Serial.println(F("Turntable Lock Free   "));                                 // Serial print Function
+  Serial.println(F("Turntable Lock Free"));                                    // Serial print Function
 } // END TurntableLockFree
 
 
@@ -1387,7 +1251,242 @@ void TurntableLockSetLock()                                                    /
 {
   digitalWrite(Turntable_LockL1, LOW);                                         // Arduino Output Pin 10 = Turntable Lock L1   = Turntable Cable Pin 5
   digitalWrite(Turntable_LockL2, HIGH);                                        // Arduino Output Pin  9 = Turntable Lock L2   = Turntable Cable Pin 6
-  Serial.println(F("Turntable Lock Active "));                                 // Serial print Function
+  Serial.println(F("Turntable Lock Active"));                                  // Serial print Function
   TurntableLockMillis = millis() + TurntableLockInterval;                      // Set Turntable Lock Active Timer
   TurntableLockActive = true;
 } // END TurntableLockLocked
+
+
+//-----------------------------------------------------------------------------//
+void loop()                                                                    // Arduino Main Program
+{
+  unsigned long currentMillis = millis();
+  if ( currentMillis - WatchdogMillis >= WatchdogInterval )
+  {
+    WatchdogMillis = currentMillis;
+    WatchdogState = !WatchdogState;
+    digitalWrite(WatchdogLED, WatchdogState);
+  }
+  DCC_Accessory_CheckStatus();                                                 // Check DCC Accessory Status
+  Button_CheckStatus();                                                        // Check Button Status
+  Turntable_CheckSwitch();                                                     // Check Kato Turntable Pin 1
+  BridgeRelayCheck();                                                          // Check Bride Relay Status = ULN2803A
+  TurntableLockCheck();                                                        // Check Turntable Lock Status
+  if ((Turntable_OldAction == STOP) && (Turntable_NewAction == DCC_INPUT))
+  {
+    Turntable_Init();                                                          // Action: Initialize Turntable
+    Turntable_OldAction = Turntable_NewAction;                                 // Switch Old Action
+    Turntable_NewAction = DCC_INPUT;                                           // Action: Initialize Turntable
+  //                0123456789012345678901234                                  // Sample text
+    Serial.print(F("(..)DCC_INPUT         -> "));                              // Serial print Function
+    PrintStatus();                                                             // Print Actions and Track Numbers
+  } // END if
+
+  if ((Turntable_OldAction == STOP) && (Turntable_NewAction == DCC_CLEAR))
+  {
+    Turntable_Clear();                                                         // Action: Set Turntable Track to 1
+    Turntable_OldAction = Turntable_NewAction;                                 // Switch Old Action
+    Turntable_NewAction = DCC_CLEAR;                                           // Action: Set Turntable Track to 1
+  //                0123456789012345678901234                                  // Sample text
+    Serial.print(F("(..)DCC_CLEAR        --> "));                              // Serial print Function
+    PrintStatus();                                                             // Print Actions and Track Numbers
+  } // END if
+
+  if ((Turntable_OldAction == STOP) && (Turntable_NewAction == DCC_END))
+  {
+    Turntable_End();                                                           // End all actions
+    Turntable_OldAction = STOP;                                                // 
+    Turntable_NewAction = STOP;                                                // 
+  //                0123456789012345678901234                                  // Sample text
+    Serial.print(F("(..)DCC_END          --> "));                              // Serial print Function
+    PrintStatus();                                                             // Print Actions and Track Numbers
+  } // END if
+
+  if ((Turntable_OldAction != DCC_T180) && (Turntable_NewAction == DCC_T180))
+  {
+    if ((Turntable_CurrentTrack >= 1) && (Turntable_CurrentTrack <= 18))
+    {
+      speedValue = maxSpeed;                                                   // Positive = Direction ClockWise - DCC_T180
+      Turntable_SetMotorSpeed(speedValue);                                     // Motor Forward - DCC_T180
+      Turntable_OldAction = Turntable_NewAction;                               // Switch Old Action
+      Turntable_NewAction = MCW;                                               // Action: Move Motor ClockWise
+    } // END if
+    else
+    {
+      speedValue = -maxSpeed;                                                  // Negative = Direction Counter ClockWise - DCC_T180
+      Turntable_SetMotorSpeed(speedValue);                                     // Motor Backward - DCC_T180
+      Turntable_OldAction = Turntable_NewAction;                               // Switch Old Action
+      Turntable_NewAction = MCCW;                                              // Action: Move Motor Counter ClockWise
+    } // END else
+  //                0123456789012345678901234                                  // Sample text
+    Serial.print(F("(..)DCC_T180         --> "));                              // Serial print Function
+    PrintStatus();                                                             // Print Actions and Track Numbers
+  } // END if
+
+  if ((Turntable_OldAction != DCC_T1CW) && (Turntable_NewAction == DCC_T1CW))
+  {
+    speedValue = maxSpeed;                                                     // Positive = Direction ClockWise - DCC_T1CW
+    Turntable_SetMotorSpeed(speedValue);                                       // Motor Forward - DCC_T1CW
+    Turntable_OldAction = Turntable_NewAction;                                 // Switch Old Action
+    Turntable_NewAction = MCW;                                                 // Action: Move Motor ClockWise
+  //                0123456789012345678901234                                  // Sample text
+    Serial.print(F("(..)Check T1CW       --> "));                              // Serial print Function
+    PrintStatus();                                                             // Print Actions and Track Numbers
+  } // END if
+
+  if ((Turntable_OldAction != DCC_T1CCW) && (Turntable_NewAction == DCC_T1CCW))
+  {
+    speedValue = -maxSpeed;                                                    // Negative = Direction Counter ClockWise - DCC_T1CCW
+    Turntable_SetMotorSpeed(speedValue);                                       // Motor Reverse - DCC_T1CCW
+    Turntable_OldAction = Turntable_NewAction;                                 // Switch Old Action
+    Turntable_NewAction = MCCW;                                                // Action: Move Motor Counter ClockWise
+  //                0123456789012345678901234                                  // Sample text
+    Serial.print(F("(..)Check T1CCW      --> "));                              // Serial print Function
+    PrintStatus();                                                             // Print Actions and Track Numbers
+  } // END if
+
+  if ((Turntable_OldAction != BUT_STORE) && (Turntable_NewAction == BUT_STORE))
+  {
+    DCC_Action_LED_Startup();                                                  // All DCC Action LEDs ON and OFF
+    Turntable_StoreTrack();                                                    // Store Track Position in EEPROM
+    Turntable_OldAction = Turntable_NewAction;                                 // Switch Old Action
+    Turntable_NewAction = STOP;
+    //              0123456789012345678901234                                  // Sample text
+    Serial.print(F("(..)BUT_STORE        --> "));                              // Serial print Function
+    PrintStatus();                                                             // Print Actions and Track Numbers
+  } // END if
+
+  if ((Turntable_OldAction != BUT_T180) && (Turntable_NewAction == BUT_T180))
+  {
+    if ((Turntable_CurrentTrack >= 1) && (Turntable_CurrentTrack <= 18))
+    {
+      speedValue = maxSpeed;                                                   // Positive = Direction ClockWise - BUT_T180
+      Turntable_SetMotorSpeed(speedValue);                                     // Motor Forward - BUT_T180
+      Turntable_OldAction = Turntable_NewAction;                               // Switch Old Action
+      Turntable_NewAction = MCW;                                               // Action: Move Motor ClockWise
+    } // END if
+    else
+    {
+      speedValue = -maxSpeed;                                                  // Negative = Direction Counter ClockWise - BUT_T180
+      Turntable_SetMotorSpeed(speedValue);                                     // Motor Backward - BUT_T180
+      Turntable_OldAction = Turntable_NewAction;                               // Switch Old Action
+      Turntable_NewAction = MCCW;                                              // Action: Move Motor Counter ClockWise
+    } // END else
+    //              0123456789012345678901234                                  // Sample text
+    Serial.print(F("(..)BUT_T180         --> "));                              // Serial print Function
+    PrintStatus();                                                             // Print Actions and Track Numbers
+  } // END if
+
+  if ((Turntable_OldAction != BUT_T1CW) && (Turntable_NewAction == BUT_T1CW))
+  {
+    speedValue = maxSpeed;                                                     // Positive = Direction ClockWise - BUT_T1CW
+    Turntable_SetMotorSpeed(speedValue);                                       // Motor Forward - BUT_T1CW
+    Turntable_OldAction = Turntable_NewAction;                                 // Switch Old Action
+    Turntable_NewAction = MCW;                                                 // Action: Move Motor ClockWise
+  //                0123456789012345678901234                                  // Sample text
+    Serial.print(F("(..)BUT_T1CW         --> "));                              // Serial print Function
+    PrintStatus();                                                             // Print Actions and Track Numbers
+  } // END if
+
+  if ((Turntable_OldAction != BUT_T1CCW) && (Turntable_NewAction == BUT_T1CCW))
+  {
+    speedValue = -maxSpeed;                                                    // Negative = Direction Counter ClockWise - BUT_T1CCW
+    Turntable_SetMotorSpeed(speedValue);                                       // Motor Reverse - BUT_T1CCW
+    Turntable_OldAction = Turntable_NewAction;                                 // Switch Old Action
+    Turntable_NewAction = MCCW;                                                // Action: Move Motor Counter ClockWise
+  //                0123456789012345678901234                                  // Sample text
+    Serial.print(F("(..)BUT_T1CCW        --> "));                              // Serial print Function
+    PrintStatus();                                                             // Print Actions and Track Numbers
+  } // END if
+
+  if ((Turntable_OldAction != TCW) && (Turntable_NewAction == TCW))
+  {
+    speedValue = maxSpeed;                                                     // Positive = Direction ClockWise - TCW
+    Turntable_SetMotorSpeed(speedValue);                                       // Motor Forward - TCW
+    Turntable_OldAction = Turntable_NewAction;                                 // Switch Old Action
+    Turntable_NewAction = MCW;                                                 // Action: Move Motor ClockWise
+  //                0123456789012345678901234                                  // Sample text
+    Serial.print(F("(..)Check TCW        --> "));                              // Serial print Function
+    PrintStatus();                                                             // Print Actions and Track Numbers
+  } // END if
+
+  if ((Turntable_OldAction != TCCW) && (Turntable_NewAction == TCCW))
+  {
+    speedValue = -maxSpeed;                                                    // Negative = Direction Counter ClockWise - TCCW
+    Turntable_SetMotorSpeed(speedValue);                                       // Motor Reverse - TCCW
+    Turntable_OldAction = Turntable_NewAction;                                 // Switch Old Action
+    Turntable_NewAction = MCCW;                                                // Action: Move Motor Counter ClockWise
+  //                0123456789012345678901234                                  // Sample text
+    Serial.print(F("(..)Check TCCW       --> "));                              // Serial print Function
+    PrintStatus();                                                             // Print Actions and Track Numbers
+  } // END if
+
+  if ((Turntable_OldAction == MCW) && (Turntable_NewAction == POS))            // Move ClockWise and Turntable in Position
+  {
+    Turntable_CurrentTrack = Turntable_CurrentTrack + 1;
+    if (Turntable_CurrentTrack > maxTrack)                                     // From Track 36 to Track 1
+    {
+      Turntable_CurrentTrack = 1;                                              // Track (1)
+    } // END if
+    Turntable_CheckPos();                                                      // Check if Bridge on wanted track position
+  //                0123456789012345678901234                                  // Sample text
+    Serial.print(F("(..)T+1 - Check MCW  --> "));                              // Serial print Function
+    PrintStatus();                                                             // Print Actions and Track Numbers
+    LCDPrintTrackStatus();                                                     // LCD print text
+  } // END if
+
+  if ((Turntable_OldAction == MCCW) && (Turntable_NewAction == POS))           // Move Counter ClockWise and Turntable in Position
+  {
+    Turntable_CurrentTrack = Turntable_CurrentTrack - 1;
+    if (Turntable_CurrentTrack == 0)                                           // From Track 1 to Track 36
+    {
+      Turntable_CurrentTrack = maxTrack;                                       // Track (maxTrack)
+    } // END if
+    Turntable_CheckPos();                                                      // Check if Bridge in Position
+  //                0123456789012345678901234                                  // Sample text
+    Serial.print(F("(..)T-1 - Check MCCW --> "));                              // Serial print Function
+    PrintStatus();                                                             // Print Actions and Track Numbers
+    LCDPrintTrackStatus();                                                     // LCD print text
+  } // END if
+
+  if ((Turntable_OldAction == DCC_DCW) && (Turntable_NewAction == POS))        // Move ClockWise and Turntable in Position
+  {
+    Turntable_CurrentTrack = Turntable_CurrentTrack + 1;
+    if (Turntable_CurrentTrack > maxTrack)                                     // From Track 36 to Track 1
+    {
+      Turntable_CurrentTrack = 1;                                              // Track (1)
+    } // END if
+    Turntable_CheckPos();                                                      // Check if Bridge in Position
+  //                0123456789012345678901234                                  // Sample text
+    Serial.print(F("(..)T+1 - Check DCW  --> "));                              // Serial print Function
+    PrintStatus();                                                             // Print Actions and Track Numbers
+    LCDPrintTrackStatus();                                                     // LCD print text
+  } // END if
+  
+  if ((Turntable_OldAction == DCC_DCCW) && (Turntable_NewAction == POS))       // Move Counter ClockWise and Turntable in Position
+  {
+    Turntable_CurrentTrack = Turntable_CurrentTrack - 1;
+    if (Turntable_CurrentTrack == 0)                                           // From Track 1 to Track 36
+    {
+      Turntable_CurrentTrack = maxTrack;                                       // Track (maxTrack)
+    } // END if
+    Turntable_CheckPos();                                                      // Check if Bridge in Position
+  //                0123456789012345678901234                                  // Sample text
+    Serial.print(F("(..)T-1 - Check DCCW --> "));                              // Serial print Function
+    PrintStatus();                                                             // Print Actions and Track Numbers
+    LCDPrintTrackStatus();                                                     // LCD print text
+  } // END if
+  
+  if ((Turntable_OldAction == POS) && (Turntable_NewAction == STOP))           // STOP
+  {
+    Turntable_StoreTrack();                                                    // Store Track Position in EEPROM
+    BridgeRelayActive = true;                                                  // Activate Bridge Relay Set
+    BridgeRelaySet();                                                          // Set Bride Relay Status = ULN2803A
+    Turntable_OldAction = Turntable_NewAction;                                 // Switch Old Action
+    Turntable_NewAction = STOP;                                                // Action: STOP
+  //                0123456789012345678901234                                  // Sample text
+    Serial.print(F("(..)STOP             --> "));                              // Serial print Function
+    PrintStatus();                                                             // Print Actions and Track Numbers
+  } // END if
+} // END loop
+//-----------------------------------------------------------------------------//
