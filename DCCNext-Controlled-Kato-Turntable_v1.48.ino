@@ -1,4 +1,4 @@
-//-----------------------------------------------------------------------------// DCCNext-Controlled-Kato-Turntable_v1.47
+//-----------------------------------------------------------------------------// DCCNext-Controlled-Kato-Turntable_v1.48
 #include <EEPROM.h>                                                            // Standard Arduino EEPROM library
 #include <DCC_Decoder.h>                                                       // Use Manage Libraries to add: NmraDcc -- https://github.com/MynaBay/DCC_Decoder
 #include <ezButton.h>                                                          // Use Manage Libraries to add: ezButton -- https://github.com/ArduinoGetStarted/button
@@ -43,8 +43,8 @@ uint8_t  Turntable_CurrentTrack     =     0;                                   /
 uint8_t  Turntable_NewTrack         =     0;                                   // Turntable New Track
 uint8_t  EE_Address                 =     0;                                   // EEPROM Address Turntable Bridge Position
 int      speedValue                 =     0;                                   // Turntable Motor Speed = 0 - 255
-boolean  DCC_ReverseTrack[36];                                                 // Status will change by DCC command (false = Normal, true = Reversed)
-// Note: Size of DCC_ReverseTrack must be the same as maxTrack !!              // Note: Size of DCC_ReverseTrack must be the same as maxTrack !!                                                                               // Note: Size of DCC_ReverseTrack must be the same as maxTrack !!
+boolean  DCC_ReverseTrack[37];                                                 // Status will change by DCC command (false = Normal, true = Reversed)
+// Note: Size of DCC_ReverseTrack must be maxTrack+1 !!                        // --> [0..maxTrack] = maxTrack+1 records !!                                                                               // Note: Size of DCC_ReverseTrack must be the same as maxTrack !!
 const uint32_t WatchdogInterval     =   250;                                   // Watchdog blink interval in ms
 uint32_t WatchdogMillis             =     0;                                   // Last time Watchdog LED was updated
 boolean  WatchdogState              =   LOW;                                   // Watchdog LED state
@@ -138,7 +138,7 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);                                            /
 void setup()                                                                   // Arduino Setup
 {
   Serial.begin(115200);
-  Serial.println(F("DCCNext-Controlled-Kato-Turntable_v1.47 -- (c)JMRRvS 2021-01-03"));
+  Serial.println(F("DCCNext-Controlled-Kato-Turntable_v1.48 -- (c)JMRRvS 2021-01-04"));
                                                                                // Serial print loaded sketch
   lcd.init();                                                                  // Initialise LCD
   lcd.backlight();                                                             // Switch backlight ON
@@ -147,7 +147,7 @@ void setup()                                                                   /
   lcd.print(F("DCCNext Controlled  "));                                        // LCD print text
   lcd.setCursor(0, 1);                                                         // Set cursor to second line and left corner
   //           01234567890123456789                                            // Sample text
-  lcd.print(F("Kato Turntable v1.47"));                                        // LCD print text
+  lcd.print(F("Kato Turntable v1.48"));                                        // LCD print text
   lcd.setCursor(0, 2);                                                         // Set cursor to third line and left corner
   //           01234567890123456789                                            // Sample text
   lcd.print(F("--------------------"));                                        // LCD print text
@@ -183,7 +183,7 @@ void setup()                                                                   /
   DCC.SetBasicAccessoryDecoderPacketHandler(BasicAccDecoderPacket_Handler, true);
   DCC_Accessory_ConfigureDecoderFunctions();
   DCC.SetupDecoder( 0x00, 0x00, kDCC_INTERRUPT );
-  for (int AccDec = 0; AccDec < DCC_Max_Accessories; AccDec++)                 // Begin loop through DCC Accessory Decoders
+  for (uint8_t AccDec = 0; AccDec < DCC_Max_Accessories; AccDec++)             // Begin loop through DCC Accessory Decoders
   {
     DCC_Accessory[AccDec].Button = 0;                                          // Switch OFF all DCC Accessory Decoders
   } // END for
@@ -222,18 +222,18 @@ void BasicAccDecoderPacket_Handler(int address, boolean activate, byte data)
   address += DCC_Address_Offset;                                               // Default = 1, for Multimaus = 4
   address += (data & 0x06) >> 1;                                               // Convert NMRA packet address format to human address
   boolean output = (data & 0x01) ? 1 : 0;                                      // Red = 0, Green = 1
-  for(int i = 0; i < DCC_Max_Accessories; i++)
+  for (uint8_t AccDec = 0; AccDec < DCC_Max_Accessories; AccDec++)             // Begin loop through DCC Accessory Decoders
   {
-    if (address == DCC_Accessory[i].Address)
+    if (address == DCC_Accessory[AccDec].Address)
     {
-      DCC_Accessory[i].Active = 1;                                             // DCC Accessory Active
+      DCC_Accessory[AccDec].Active = 1;                                        // DCC Accessory Active
       if (output)
       {
-        DCC_Accessory[i].Button = 1;                                           // Green Button
+        DCC_Accessory[AccDec].Button = 1;                                      // Green Button
       } // END if
       else
       {
-        DCC_Accessory[i].Button = 0;                                           // Red Button
+        DCC_Accessory[AccDec].Button = 0;                                      // Red Button
       } // END else
     } // END if
   } // END for
@@ -403,7 +403,7 @@ void DCC_Accessory_ConfigureDecoderFunctions()
 
 void DCC_Accessory_CheckStatus()
 {
-  for (int AccDec = 0; AccDec < DCC_Max_Accessories; AccDec++)                 // Begin loop through DCC Accessory Decoders
+  for (uint8_t AccDec = 0; AccDec < DCC_Max_Accessories; AccDec++)                 // Begin loop through DCC Accessory Decoders
   {
     DCC.loop();                                                                // Loop DCC Library
     if (DCC_Accessory[AccDec].Finished && DCC_Accessory[AccDec].Active)
@@ -781,10 +781,10 @@ void Turntable_CheckPos()                                                      /
 
 void DCC_Accessory_LED_OFF()                                                   // All LEDs OFF
 {
-  for (int i = 0; i < DCC_Max_Accessories; i++)
+  for (uint8_t AccDec = 0; AccDec < DCC_Max_Accessories; AccDec++)
   {
-    digitalWrite(DCC_Accessory[i].OutputPin1, LOW);                            // LED OFF
-    digitalWrite(DCC_Accessory[i].OutputPin2, LOW);                            // LED OFF
+    digitalWrite(DCC_Accessory[AccDec].OutputPin1, LOW);                       // LED OFF
+    digitalWrite(DCC_Accessory[AccDec].OutputPin2, LOW);                       // LED OFF
   } // END for
 } // END DCC_Accessory_LED_OFF
 
@@ -1347,6 +1347,8 @@ void loop()                                                                    /
 
   if ((Turntable_OldAction != BUT_STORE) && (Turntable_NewAction == BUT_STORE))
   {
+    Turntable_CurrentTrack = 1;                                                // Bridge in Home Position
+    Turntable_NewTrack = 1;                                                    // Bridge in Home Position
     DCC_Action_LED_Startup();                                                  // All DCC Action LEDs ON and OFF
     Turntable_StoreTrack();                                                    // Store Track Position in EEPROM
     Turntable_OldAction = Turntable_NewAction;                                 // Switch Old Action
@@ -1354,6 +1356,7 @@ void loop()                                                                    /
     //              0123456789012345678901234                                  // Sample text
     Serial.print(F("(..)BUT_STORE        --> "));                              // Serial print Function
     PrintStatus();                                                             // Print Actions and Track Numbers
+    LCDPrintTrackStatus();                                                     // LCD print text
   } // END if
 
   if ((Turntable_OldAction != BUT_T180) && (Turntable_NewAction == BUT_T180))
