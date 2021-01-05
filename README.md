@@ -1,5 +1,7 @@
 # DCCNext-Controlled-Kato-Turntable
-DCCNext based PCB and additional PCB to control a Kato 20-283 Unitrack Turntable
+DCCNext based PCB and additional PCB to control a Kato 20-283 Unitrack Turntable<BR>
+v1.48 uses Littfinski DatenTechnik (LDT) TurnTable Decoder TT-DEC standard.<BR>
+v2.00 uses Fleischmann Turn Control standard.<BR>
 
 Schematics created in KiCAD v5.1.6<BR>
 Pictures from the additional PCB (top and bottom)<BR>
