@@ -1,10 +1,14 @@
-//-----------------------------------------------------------------------------// DCCNext-Controlled-Kato-Turntable_v2.00
+//-----------------------------------------------------------------------------// DCCNext-Controlled-Kato-Turntable_v2.01
+// The programmed tracks 1-36, correspond to adresses 401 to 436.
+// Red = Bridge hut end of turntable will rotate to selected track.
+// Green = Opposite bridge hut end will rotate to selected track.
+// Address 400 = 180° bridge rotation, Red = Clockwise (CW), Green = Counter Clockwise (CCW).
 #include <EEPROM.h>                                                            // Standard Arduino EEPROM library
 #include <DCC_Decoder.h>                                                       // Use Manage Libraries to add: NmraDcc -- https://github.com/MynaBay/DCC_Decoder
 #include <ezButton.h>                                                          // Use Manage Libraries to add: ezButton -- https://github.com/ArduinoGetStarted/button
 #include <LiquidCrystal_I2C.h>                                                 // Use Manage Libraries to add: LiquidCrystal I2C -- https://github.com/johnrickman/LiquidCrystal_I2C
 #define maxSpeed                        100                                    // Speed between -255 = Reversed to 255 = Forward (-5 to +5 VDC)
-#define maxTrack                         36                                    // Total Number of Turntable Tracks
+#define maxTrack                         36                                    // Total number of turntable tracks
 #define kDCC_INTERRUPT                    0                                    // DCC Interrupt 0
 #define DCC_Address_Offset                1                                    // Default = 1, for Multimaus = 4
 #define DCC_Max_Accessories              19                                    // Total Number of DCC Accessory Decoder 0..18 = Addresses = 400 - 436
@@ -138,7 +142,7 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);                                            /
 void setup()                                                                   // Arduino Setup
 {
   Serial.begin(115200);
-  Serial.println(F("DCCNext-Controlled-Kato-Turntable_v2.00 -- (c)JMRRvS 2021-01-04"));
+  Serial.println(F("DCCNext-Controlled-Kato-Turntable_v2.01 -- (c)JMRRvS 2021-01-05"));
                                                                                // Serial print loaded sketch
   lcd.init();                                                                  // Initialise LCD
   lcd.backlight();                                                             // Switch backlight ON
@@ -147,7 +151,7 @@ void setup()                                                                   /
   lcd.print(F("DCCNext Controlled  "));                                        // LCD print text
   lcd.setCursor(0, 1);                                                         // Set cursor to second line and left corner
   //           01234567890123456789                                            // Sample text
-  lcd.print(F("Kato Turntable v2.00"));                                        // LCD print text
+  lcd.print(F("Kato Turntable v2.01"));                                        // LCD print text
   lcd.setCursor(0, 2);                                                         // Set cursor to third line and left corner
   //           01234567890123456789                                            // Sample text
   lcd.print(F("--------------------"));                                        // LCD print text
@@ -257,11 +261,11 @@ void DCC_Accessory_ConfigureDecoderFunctions()
   DCC_Accessory[1].Address        =   401;                                     // DCC Address 401
   DCC_Accessory[1].Button         =     0;                                     // Accessory Button: 0 = OFF (Red), 1 = ON (Green)
   DCC_Accessory[1].Position1      =     1;                                     // Goto Track # CCW
-  DCC_Accessory[1].Position2      =     1;                                     // Goto Track # CW
+  DCC_Accessory[1].Position2      =    19;                                     // Goto Track # CW
   DCC_Accessory[1].OutputPin1     =    14;                                     // Arduino Output Pin 14 = Red LED
   DCC_Accessory[1].OutputPin2     =    15;                                     // Arduino Output Pin 15 = Green LED
   DCC_Accessory[1].ReverseTrack1  =     1;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
-  DCC_Accessory[1].ReverseTrack2  =     1;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
+  DCC_Accessory[1].ReverseTrack2  =     0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
   DCC_Accessory[1].Finished       =     1;                                     // Command Busy = 0 or Finished = 1
   DCC_Accessory[1].Active         =     0;                                     // Command Not Active = 0, Active = 1
   DCC_Accessory[1].durationMilli  =   250;                                     // Pulse Time in ms
@@ -269,11 +273,11 @@ void DCC_Accessory_ConfigureDecoderFunctions()
   DCC_Accessory[2].Address        =   402;                                     // DCC Address
   DCC_Accessory[2].Button         =     0;                                     // Accessory Button: 0 = OFF (Red), 1 = ON (Green)
   DCC_Accessory[2].Position1      =     2;                                     // Goto Track # CCW
-  DCC_Accessory[2].Position2      =     2;                                     // Goto Track # CW
+  DCC_Accessory[2].Position2      =    20;                                     // Goto Track # CW
   DCC_Accessory[2].OutputPin1     =    14;                                     // Arduino Output Pin 14 = Red LED
   DCC_Accessory[2].OutputPin2     =    15;                                     // Arduino Output Pin 15 = Green LED
   DCC_Accessory[2].ReverseTrack1  =     1;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
-  DCC_Accessory[2].ReverseTrack2  =     1;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
+  DCC_Accessory[2].ReverseTrack2  =     0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
   DCC_Accessory[2].Finished       =     1;                                     // Command Busy = 0 or Finished = 1
   DCC_Accessory[2].Active         =     0;                                     // Command Not Active = 0, Active = 1
   DCC_Accessory[2].durationMilli  =   250;                                     // Pulse Time in ms
@@ -281,11 +285,11 @@ void DCC_Accessory_ConfigureDecoderFunctions()
   DCC_Accessory[3].Address        =   403;                                     // DCC Address
   DCC_Accessory[3].Button         =     0;                                     // Accessory Button: 0 = OFF (Red), 1 = ON (Green)
   DCC_Accessory[3].Position1      =     3;                                     // Goto Track # CCW
-  DCC_Accessory[3].Position2      =     3;                                     // Goto Track # CW
+  DCC_Accessory[3].Position2      =    21;                                     // Goto Track # CW
   DCC_Accessory[3].OutputPin1     =    14;                                     // Arduino Output Pin 14 = Red LED
   DCC_Accessory[3].OutputPin2     =    15;                                     // Arduino Output Pin 15 = Green LED
   DCC_Accessory[3].ReverseTrack1  =     0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
-  DCC_Accessory[3].ReverseTrack2  =     0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
+  DCC_Accessory[3].ReverseTrack2  =     1;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
   DCC_Accessory[3].Finished       =     1;                                     // Command Busy = 0 or Finished = 1
   DCC_Accessory[3].Active         =     0;                                     // Command Not Active = 0, Active = 1
   DCC_Accessory[3].durationMilli  =   250;                                     // Pulse Time in ms
@@ -293,11 +297,11 @@ void DCC_Accessory_ConfigureDecoderFunctions()
   DCC_Accessory[4].Address        =   404;                                     // DCC Address
   DCC_Accessory[4].Button         =     0;                                     // Accessory Button: 0 = OFF (Red), 1 = ON (Green)
   DCC_Accessory[4].Position1      =     4;                                     // Goto Track # CCW
-  DCC_Accessory[4].Position2      =     4;                                     // Goto Track # CW
+  DCC_Accessory[4].Position2      =    22;                                     // Goto Track # CW
   DCC_Accessory[4].OutputPin1     =    14;                                     // Arduino Output Pin 14 = Red LED
   DCC_Accessory[4].OutputPin2     =    15;                                     // Arduino Output Pin 15 = Green LED
   DCC_Accessory[4].ReverseTrack1  =     0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
-  DCC_Accessory[4].ReverseTrack2  =     0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
+  DCC_Accessory[4].ReverseTrack2  =     1;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
   DCC_Accessory[4].Finished       =     1;                                     // Command Busy = 0 or Finished = 1
   DCC_Accessory[4].Active         =     0;                                     // Command Not Active = 0, Active = 1
   DCC_Accessory[4].durationMilli  =   250;                                     // Pulse Time in ms
@@ -305,11 +309,11 @@ void DCC_Accessory_ConfigureDecoderFunctions()
   DCC_Accessory[5].Address        =   405;                                     // DCC Address
   DCC_Accessory[5].Button         =     0;                                     // Accessory Button: 0 = OFF (Red), 1 = ON (Green)
   DCC_Accessory[5].Position1      =     5;                                     // Goto Track # CCW
-  DCC_Accessory[5].Position2      =     5;                                     // Goto Track # CW
+  DCC_Accessory[5].Position2      =    23;                                     // Goto Track # CW
   DCC_Accessory[5].OutputPin1     =    14;                                     // Arduino Output Pin 14 = Red LED
   DCC_Accessory[5].OutputPin2     =    15;                                     // Arduino Output Pin 15 = Green LED
   DCC_Accessory[5].ReverseTrack1  =     0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
-  DCC_Accessory[5].ReverseTrack2  =     0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
+  DCC_Accessory[5].ReverseTrack2  =     1;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
   DCC_Accessory[5].Finished       =     1;                                     // Command Busy = 0 or Finished = 1
   DCC_Accessory[5].Active         =     0;                                     // Command Not Active = 0, Active = 1
   DCC_Accessory[5].durationMilli  =   250;                                     // Pulse Time in ms
@@ -317,11 +321,11 @@ void DCC_Accessory_ConfigureDecoderFunctions()
   DCC_Accessory[6].Address        =   406;                                     // DCC Address
   DCC_Accessory[6].Button         =     0;                                     // Accessory Button: 0 = OFF (Red), 1 = ON (Green)
   DCC_Accessory[6].Position1      =     6;                                     // Goto Track # CCW
-  DCC_Accessory[6].Position2      =     6;                                     // Goto Track # CW
+  DCC_Accessory[6].Position2      =    24;                                     // Goto Track # CW
   DCC_Accessory[6].OutputPin1     =    14;                                     // Arduino Output Pin 14 = Red LED
   DCC_Accessory[6].OutputPin2     =    15;                                     // Arduino Output Pin 15 = Green LED
   DCC_Accessory[6].ReverseTrack1  =     0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
-  DCC_Accessory[6].ReverseTrack2  =     0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
+  DCC_Accessory[6].ReverseTrack2  =     1;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
   DCC_Accessory[6].Finished       =     1;                                     // Command Busy = 0 or Finished = 1
   DCC_Accessory[6].Active         =     0;                                     // Command Not Active = 0, Active = 1
   DCC_Accessory[6].durationMilli  =   250;                                     // Pulse Time in ms
@@ -329,11 +333,11 @@ void DCC_Accessory_ConfigureDecoderFunctions()
   DCC_Accessory[7].Address        =   407;                                     // DCC Address
   DCC_Accessory[7].Button         =     0;                                     // Accessory Button: 0 = OFF (Red), 1 = ON (Green)
   DCC_Accessory[7].Position1      =     7;                                     // Goto Track # CCW
-  DCC_Accessory[7].Position2      =     7;                                     // Goto Track # CW
+  DCC_Accessory[7].Position2      =    25;                                     // Goto Track # CW
   DCC_Accessory[7].OutputPin1     =    14;                                     // Arduino Output Pin 14 = Red LED
   DCC_Accessory[7].OutputPin2     =    15;                                     // Arduino Output Pin 15 = Green LED
   DCC_Accessory[7].ReverseTrack1  =     0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
-  DCC_Accessory[7].ReverseTrack2  =     0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
+  DCC_Accessory[7].ReverseTrack2  =     1;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
   DCC_Accessory[7].Finished       =     1;                                     // Command Busy = 0 or Finished = 1
   DCC_Accessory[7].Active         =     0;                                     // Command Not Active = 0, Active = 1
   DCC_Accessory[7].durationMilli  =   250;                                     // Pulse Time in ms
@@ -341,11 +345,11 @@ void DCC_Accessory_ConfigureDecoderFunctions()
   DCC_Accessory[8].Address        =   408;                                     // DCC Address
   DCC_Accessory[8].Button         =     0;                                     // Accessory Button: 0 = OFF (Red), 1 = ON (Green)
   DCC_Accessory[8].Position1      =     8;                                     // Goto Track # CCW
-  DCC_Accessory[8].Position2      =     8;                                     // Goto Track # CW
+  DCC_Accessory[8].Position2      =    26;                                     // Goto Track # CW
   DCC_Accessory[8].OutputPin1     =    14;                                     // Arduino Output Pin 14 = Red LED
   DCC_Accessory[8].OutputPin2     =    15;                                     // Arduino Output Pin 15 = Green LED
   DCC_Accessory[8].ReverseTrack1  =     0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
-  DCC_Accessory[8].ReverseTrack2  =     0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
+  DCC_Accessory[8].ReverseTrack2  =     1;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
   DCC_Accessory[8].Finished       =     1;                                     // Command Busy = 0 or Finished = 1
   DCC_Accessory[8].Active         =     0;                                     // Command Not Active = 0, Active = 1
   DCC_Accessory[8].durationMilli  =   250;                                     // Pulse Time in ms
@@ -353,11 +357,11 @@ void DCC_Accessory_ConfigureDecoderFunctions()
   DCC_Accessory[9].Address        =   409;                                     // DCC Address
   DCC_Accessory[9].Button         =     0;                                     // Accessory Button: 0 = OFF (Red), 1 = ON (Green)
   DCC_Accessory[9].Position1      =     9;                                     // Goto Track # CCW
-  DCC_Accessory[9].Position2      =     9;                                     // Goto Track # CW
+  DCC_Accessory[9].Position2      =    27;                                     // Goto Track # CW
   DCC_Accessory[9].OutputPin1     =    14;                                     // Arduino Output Pin 14 = Red LED
   DCC_Accessory[9].OutputPin2     =    15;                                     // Arduino Output Pin 15 = Green LED
   DCC_Accessory[9].ReverseTrack1  =     0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
-  DCC_Accessory[9].ReverseTrack2  =     0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
+  DCC_Accessory[9].ReverseTrack2  =     1;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
   DCC_Accessory[9].Finished       =     1;                                     // Command Busy = 0 or Finished = 1
   DCC_Accessory[9].Active         =     0;                                     // Command Not Active = 0, Active = 1
   DCC_Accessory[9].durationMilli  =   250;                                     // Pulse Time in ms
@@ -365,11 +369,11 @@ void DCC_Accessory_ConfigureDecoderFunctions()
   DCC_Accessory[10].Address        =  410;                                     // DCC Address
   DCC_Accessory[10].Button         =    0;                                     // Accessory Button: 0 = OFF (Red), 1 = ON (Green)
   DCC_Accessory[10].Position1      =   10;                                     // Goto Track # CCW
-  DCC_Accessory[10].Position2      =   10;                                     // Goto Track # CW
+  DCC_Accessory[10].Position2      =   28;                                     // Goto Track # CW
   DCC_Accessory[10].OutputPin1     =   14;                                     // Arduino Output Pin 14 = Red LED
   DCC_Accessory[10].OutputPin2     =   15;                                     // Arduino Output Pin 15 = Green LED
   DCC_Accessory[10].ReverseTrack1  =    0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
-  DCC_Accessory[10].ReverseTrack2  =    0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
+  DCC_Accessory[10].ReverseTrack2  =    1;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
   DCC_Accessory[10].Finished       =    1;                                     // Command Busy = 0 or Finished = 1
   DCC_Accessory[10].Active         =    0;                                     // Command Not Active = 0, Active = 1
   DCC_Accessory[10].durationMilli  =  250;                                     // Pulse Time in ms
@@ -377,11 +381,11 @@ void DCC_Accessory_ConfigureDecoderFunctions()
   DCC_Accessory[11].Address        =  411;                                     // DCC Address
   DCC_Accessory[11].Button         =    0;                                     // Accessory Button: 0 = OFF (Red), 1 = ON (Green)
   DCC_Accessory[11].Position1      =   11;                                     // Goto Track # CCW
-  DCC_Accessory[11].Position2      =   11;                                     // Goto Track # CW
+  DCC_Accessory[11].Position2      =   29;                                     // Goto Track # CW
   DCC_Accessory[11].OutputPin1     =   14;                                     // Arduino Output Pin 14 = Red LED
   DCC_Accessory[11].OutputPin2     =   15;                                     // Arduino Output Pin 15 = Green LED
   DCC_Accessory[11].ReverseTrack1  =    0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
-  DCC_Accessory[11].ReverseTrack2  =    0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
+  DCC_Accessory[11].ReverseTrack2  =    1;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
   DCC_Accessory[11].Finished       =    1;                                     // Command Busy = 0 or Finished = 1
   DCC_Accessory[11].Active         =    0;                                     // Command Not Active = 0, Active = 1
   DCC_Accessory[11].durationMilli  =  250;                                     // Pulse Time in ms
@@ -389,11 +393,11 @@ void DCC_Accessory_ConfigureDecoderFunctions()
   DCC_Accessory[12].Address        =  412;                                     // DCC Address
   DCC_Accessory[12].Button         =    0;                                     // Accessory Button: 0 = OFF (Red), 1 = ON (Green)
   DCC_Accessory[12].Position1      =   12;                                     // Goto Track # CCW
-  DCC_Accessory[12].Position2      =   12;                                     // Goto Track # CW
+  DCC_Accessory[12].Position2      =   30;                                     // Goto Track # CW
   DCC_Accessory[12].OutputPin1     =   14;                                     // Arduino Output Pin 14 = Red LED
   DCC_Accessory[12].OutputPin2     =   15;                                     // Arduino Output Pin 15 = Green LED
   DCC_Accessory[12].ReverseTrack1  =    0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
-  DCC_Accessory[12].ReverseTrack2  =    0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
+  DCC_Accessory[12].ReverseTrack2  =    1;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
   DCC_Accessory[12].Finished       =    1;                                     // Command Busy = 0 or Finished = 1
   DCC_Accessory[12].Active         =    0;                                     // Command Not Active = 0, Active = 1
   DCC_Accessory[12].durationMilli  =  250;                                     // Pulse Time in ms
@@ -401,11 +405,11 @@ void DCC_Accessory_ConfigureDecoderFunctions()
   DCC_Accessory[13].Address        =  413;                                     // DCC Address
   DCC_Accessory[13].Button         =    0;                                     // Accessory Button: 0 = OFF (Red), 1 = ON (Green)
   DCC_Accessory[13].Position1      =   31;                                     // Goto Track # CCW
-  DCC_Accessory[13].Position2      =   31;                                     // Goto Track # CW
+  DCC_Accessory[13].Position2      =   13;                                     // Goto Track # CW
   DCC_Accessory[13].OutputPin1     =   14;                                     // Arduino Output Pin 14 = Red LED
   DCC_Accessory[13].OutputPin2     =   15;                                     // Arduino Output Pin 15 = Green LED
   DCC_Accessory[13].ReverseTrack1  =    1;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
-  DCC_Accessory[13].ReverseTrack2  =    1;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
+  DCC_Accessory[13].ReverseTrack2  =    0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
   DCC_Accessory[13].Finished       =    1;                                     // Command Busy = 0 or Finished = 1
   DCC_Accessory[13].Active         =    0;                                     // Command Not Active = 0, Active = 1
   DCC_Accessory[13].durationMilli  =  250;                                     // Pulse Time in ms
@@ -413,11 +417,11 @@ void DCC_Accessory_ConfigureDecoderFunctions()
   DCC_Accessory[14].Address        =  414;                                     // DCC Address
   DCC_Accessory[14].Button         =    0;                                     // Accessory Button: 0 = OFF (Red), 1 = ON (Green)
   DCC_Accessory[14].Position1      =   32;                                     // Goto Track # CCW
-  DCC_Accessory[14].Position2      =   32;                                     // Goto Track # CW
+  DCC_Accessory[14].Position2      =   14;                                     // Goto Track # CW
   DCC_Accessory[14].OutputPin1     =   14;                                     // Arduino Output Pin 14 = Red LED
   DCC_Accessory[14].OutputPin2     =   15;                                     // Arduino Output Pin 15 = Green LED
   DCC_Accessory[14].ReverseTrack1  =    1;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
-  DCC_Accessory[14].ReverseTrack2  =    1;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
+  DCC_Accessory[14].ReverseTrack2  =    0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
   DCC_Accessory[14].Finished       =    1;                                     // Command Busy = 0 or Finished = 1
   DCC_Accessory[14].Active         =    0;                                     // Command Not Active = 0, Active = 1
   DCC_Accessory[14].durationMilli  =  250;                                     // Pulse Time in ms
@@ -425,11 +429,11 @@ void DCC_Accessory_ConfigureDecoderFunctions()
   DCC_Accessory[15].Address        =  415;                                     // DCC Address
   DCC_Accessory[15].Button         =    0;                                     // Accessory Button: 0 = OFF (Red), 1 = ON (Green)
   DCC_Accessory[15].Position1      =   33;                                     // Goto Track # CCW
-  DCC_Accessory[15].Position2      =   33;                                     // Goto Track # CW
+  DCC_Accessory[15].Position2      =   15;                                     // Goto Track # CW
   DCC_Accessory[15].OutputPin1     =   14;                                     // Arduino Output Pin 14 = Red LED
   DCC_Accessory[15].OutputPin2     =   15;                                     // Arduino Output Pin 15 = Green LED
   DCC_Accessory[15].ReverseTrack1  =    1;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
-  DCC_Accessory[15].ReverseTrack2  =    1;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
+  DCC_Accessory[15].ReverseTrack2  =    0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
   DCC_Accessory[15].Finished       =    1;                                     // Command Busy = 0 or Finished = 1
   DCC_Accessory[15].Active         =    0;                                     // Command Not Active = 0, Active = 1
   DCC_Accessory[15].durationMilli  =  250;                                     // Pulse Time in ms
@@ -437,11 +441,11 @@ void DCC_Accessory_ConfigureDecoderFunctions()
   DCC_Accessory[16].Address        =  416;                                     // DCC Address
   DCC_Accessory[16].Button         =    0;                                     // Accessory Button: 0 = OFF (Red), 1 = ON (Green)
   DCC_Accessory[16].Position1      =   34;                                     // Goto Track # CCW
-  DCC_Accessory[16].Position2      =   34;                                     // Goto Track # CW
+  DCC_Accessory[16].Position2      =   16;                                     // Goto Track # CW
   DCC_Accessory[16].OutputPin1     =   14;                                     // Arduino Output Pin 14 = Red LED
   DCC_Accessory[16].OutputPin2     =   15;                                     // Arduino Output Pin 15 = Green LED
   DCC_Accessory[16].ReverseTrack1  =    1;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
-  DCC_Accessory[16].ReverseTrack2  =    1;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
+  DCC_Accessory[16].ReverseTrack2  =    0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
   DCC_Accessory[16].Finished       =    1;                                     // Command Busy = 0 or Finished = 1
   DCC_Accessory[16].Active         =    0;                                     // Command Not Active = 0, Active = 1
   DCC_Accessory[16].durationMilli  =  250;                                     // Pulse Time in ms
@@ -449,11 +453,11 @@ void DCC_Accessory_ConfigureDecoderFunctions()
   DCC_Accessory[17].Address        =  417;                                     // DCC Address
   DCC_Accessory[17].Button         =    0;                                     // Accessory Button: 0 = OFF (Red), 1 = ON (Green)
   DCC_Accessory[17].Position1      =   35;                                     // Goto Track # CCW
-  DCC_Accessory[17].Position2      =   35;                                     // Goto Track # CW
+  DCC_Accessory[17].Position2      =   17;                                     // Goto Track # CW
   DCC_Accessory[17].OutputPin1     =   14;                                     // Arduino Output Pin 14 = Red LED
   DCC_Accessory[17].OutputPin2     =   15;                                     // Arduino Output Pin 15 = Green LED
   DCC_Accessory[17].ReverseTrack1  =    1;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
-  DCC_Accessory[17].ReverseTrack2  =    1;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
+  DCC_Accessory[17].ReverseTrack2  =    0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
   DCC_Accessory[17].Finished       =    1;                                     // Command Busy = 0 or Finished = 1
   DCC_Accessory[17].Active         =    0;                                     // Command Not Active = 0, Active = 1
   DCC_Accessory[17].durationMilli  =  250;                                     // Pulse Time in ms
@@ -461,11 +465,11 @@ void DCC_Accessory_ConfigureDecoderFunctions()
   DCC_Accessory[18].Address        =  418;                                     // DCC Address
   DCC_Accessory[18].Button         =    0;                                     // Accessory Button: 0 = OFF (Red), 1 = ON (Green)
   DCC_Accessory[18].Position1      =   36;                                     // Goto Track # CCW
-  DCC_Accessory[18].Position2      =   36;                                     // Goto Track # CW
+  DCC_Accessory[18].Position2      =   18;                                     // Goto Track # CW
   DCC_Accessory[18].OutputPin1     =   14;                                     // Arduino Output Pin 14 = Red LED
   DCC_Accessory[18].OutputPin2     =   15;                                     // Arduino Output Pin 15 = Green LED
   DCC_Accessory[18].ReverseTrack1  =    1;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
-  DCC_Accessory[18].ReverseTrack2  =    1;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
+  DCC_Accessory[18].ReverseTrack2  =    0;                                     // Reverse Track Power: 0 = Normal, 1 = Reversed
   DCC_Accessory[18].Finished       =    1;                                     // Command Busy = 0 or Finished = 1
   DCC_Accessory[18].Active         =    0;                                     // Command Not Active = 0, Active = 1
   DCC_Accessory[18].durationMilli  =  250;                                     // Pulse Time in ms
