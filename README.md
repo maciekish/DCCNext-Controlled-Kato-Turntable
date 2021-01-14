@@ -10,10 +10,14 @@ Button Right (Shortpress) = Turn 1 Step ClockWise<BR>
 Button Right (Longpress)  = Reset Turntable Lock<BR>
 Button Left  (Shortpress) = Turn 1 Step Counter ClockWise<BR>
 Button Left  (Longpress)  = Set Turntable Lock<BR>
+<BR>
+2020-01-05 v2.00 uses Fleischmann Turntable Controller 6915 standard.<BR>
+DCC Address 400 = Turn 180<BR>
+DCC Address 401 to 436 = Goto Track Number 01 to 36.
 <HR>
 Schematics created in KiCAD v5.1.6<BR>
 Pictures from the additional PCB (top and bottom)<BR>
-<HR>
+<BR>
 Components shopping list:<BR>
 Main Components:<BR>
 DCCNext:<BR>
