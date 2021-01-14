@@ -1,7 +1,16 @@
 # DCCNext-Controlled-Kato-Turntable
 DCCNext based PCB and additional PCB to control a Kato 20-283 Unitrack Turntable<BR>
 v1.48 uses Littfinski DatenTechnik (LDT) TurnTable Decoder TT-DEC standard.<BR>
-v2.00 uses Fleischmann Turntable Controller 6915 standard.<BR>
+v2.07 uses Fleischmann Turntable Controller 6915 standard.<BR>
+  
+2020-01-17: v2.07 - New Button functionality:
+Button T180  (Shortpress) = Turn 180
+Button T180  (Longpress)  = Store current position as track 1
+Button Right (Shortpress) = Turn 1 Step ClockWise
+Button Right (Longpress)  = Reset Turntable Lock
+Button Left  (Shortpress) = Turn 1 Step Counter ClockWise
+Button Left  (Longpress)  = Set Turntable Lock
+
 
 Schematics created in KiCAD v5.1.6<BR>
 Pictures from the additional PCB (top and bottom)<BR>
