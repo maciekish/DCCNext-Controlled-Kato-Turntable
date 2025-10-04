@@ -30,6 +30,24 @@ constexpr uint16_t MOTOR_PWM_FREQUENCY = 8000;
 constexpr uint8_t MOTOR_PWM_RESOLUTION = 8;
 constexpr uint8_t MOTOR_PWM_VALUE = 220;
 
+void writeMotorPwmCw(uint32_t value)
+{
+#if defined(ESP8266)
+  analogWrite(PIN_MOTOR_M1, value);
+#else
+  ledcWrite(MOTOR_PWM_CHANNEL_CW, value);
+#endif
+}
+
+void writeMotorPwmCcw(uint32_t value)
+{
+#if defined(ESP8266)
+  analogWrite(PIN_MOTOR_M2, value);
+#else
+  ledcWrite(MOTOR_PWM_CHANNEL_CCW, value);
+#endif
+}
+
 struct AccessoryEntry
 {
   uint16_t address;
@@ -157,8 +175,8 @@ uint8_t computeSteps(uint8_t from, uint8_t to, MotorDirection direction)
 
 void stopMotor()
 {
-  ledcWrite(MOTOR_PWM_CHANNEL_CW, 0);
-  ledcWrite(MOTOR_PWM_CHANNEL_CCW, 0);
+  writeMotorPwmCw(0);
+  writeMotorPwmCcw(0);
   currentDirection = MotorDirection::Idle;
 }
 
@@ -166,13 +184,13 @@ void driveMotor(MotorDirection direction)
 {
   if (direction == MotorDirection::Clockwise)
   {
-    ledcWrite(MOTOR_PWM_CHANNEL_CCW, 0);
-    ledcWrite(MOTOR_PWM_CHANNEL_CW, MOTOR_PWM_VALUE);
+    writeMotorPwmCcw(0);
+    writeMotorPwmCw(MOTOR_PWM_VALUE);
   }
   else if (direction == MotorDirection::CounterClockwise)
   {
-    ledcWrite(MOTOR_PWM_CHANNEL_CW, 0);
-    ledcWrite(MOTOR_PWM_CHANNEL_CCW, MOTOR_PWM_VALUE);
+    writeMotorPwmCw(0);
+    writeMotorPwmCcw(MOTOR_PWM_VALUE);
   }
   else
   {
@@ -552,10 +570,17 @@ void configurePins()
   digitalWrite(PIN_MOTOR_M1, LOW);
   digitalWrite(PIN_MOTOR_M2, LOW);
 
+#if defined(ESP8266)
+  analogWriteFreq(MOTOR_PWM_FREQUENCY);
+  analogWriteRange((1U << MOTOR_PWM_RESOLUTION) - 1U);
+  analogWrite(PIN_MOTOR_M1, 0);
+  analogWrite(PIN_MOTOR_M2, 0);
+#else
   ledcSetup(MOTOR_PWM_CHANNEL_CW, MOTOR_PWM_FREQUENCY, MOTOR_PWM_RESOLUTION);
   ledcSetup(MOTOR_PWM_CHANNEL_CCW, MOTOR_PWM_FREQUENCY, MOTOR_PWM_RESOLUTION);
   ledcAttachPin(PIN_MOTOR_M1, MOTOR_PWM_CHANNEL_CW);
   ledcAttachPin(PIN_MOTOR_M2, MOTOR_PWM_CHANNEL_CCW);
+#endif
 }
 
 void loadCurrentTrack()
