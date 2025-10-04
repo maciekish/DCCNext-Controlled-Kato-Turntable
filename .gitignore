@@ -1,5 +1,2 @@
 .pio/
-*.png
-*.PNG
-*.pdf
-*.PDF
+patch.diff
