@@ -1,92 +1,80 @@
-# DCCNext-Controlled-Kato-Turntable
-DCCNext based PCB and additional PCB to control a Kato 20-283 Unitrack Turntable<BR>
-v1.48 uses Littfinski DatenTechnik (LDT) TurnTable Decoder TT-DEC standard.<BR>
-v2.07 uses Fleischmann Turntable Controller 6915 standard.<BR>
-<BR>
-2020-01-17: v2.07 - New Button functionality:<BR>
-Button T180  (Shortpress) = Turn 180<BR>
-Button T180  (Longpress)  = Store current position as track 1<BR>
-Button Right (Shortpress) = Turn 1 Step ClockWise<BR>
-Button Right (Longpress)  = Reset Turntable Lock<BR>
-Button Left  (Shortpress) = Turn 1 Step Counter ClockWise<BR>
-Button Left  (Longpress)  = Set Turntable Lock<BR>
-<BR>
-2020-01-05 v2.00 uses Fleischmann Turntable Controller 6915 standard.<BR>
-DCC Address 400 = Turn 180<BR>
-DCC Address 401 to 436 = Goto Track Number 01 to 36.
-<HR>
-Schematics created in KiCAD v5.1.6<BR>
-Pictures from the additional PCB (top and bottom)<BR>
-<BR>
-Components shopping list:<BR>
-Main Components:<BR>
-DCCNext:<BR>
-https://www.arcomora.com/dccnext/<BR>
-Order your own DCCNext complete package (choose the combiset (DCCNext + USB interf. + Box) here:<BR>
-https://www.arcomora.com/reservation/<BR>
-<BR>
-DCCNext-Controlled-Kato-Turntable PCB:<BR>
-PCB version 1.0 is still available. Can be requested by email to me (only for people in The Netherlands)<BR>
-<BR>
-Resistors: 4x 1kOhm 1/8 Watt
-&nbsp&nbsp&nbsp&nbsp
-https://www.aliexpress.com/item/4000695402017.html<BR>
-Switches: 3x tactile switch 7 mm
-&nbsp&nbsp&nbsp&nbsp
-https://www.aliexpress.com/item/32912104842.html<BR>
-Relay: 1x HFD2_005-S-L2-D
-&nbsp&nbsp&nbsp&nbsp
-https://www.aliexpress.com/item/32983182219.html<BR>
-LED 3mm: 1x Red, 1x Green, 1x Yellow, 1x Blue
-&nbsp&nbsp&nbsp&nbsp
-https://www.aliexpress.com/item/32848822296.html<BR>
-IC1: H-Bridge: L293D DIP-16
-&nbsp&nbsp&nbsp&nbsp
-https://www.aliexpress.com/item/33007327277.html<BR>
-IC1-socket: DIP-16
-&nbsp&nbsp&nbsp&nbsp
-https://www.aliexpress.com/item/4001048163251.html<BR>
-IC2: Darlington Array: ULN2803A DIP-18
-&nbsp&nbsp&nbsp&nbsp
-https://www.aliexpress.com/item/32959439299.html<BR>
-IC2-socket: DIP-18
-&nbsp&nbsp&nbsp&nbsp
-https://www.aliexpress.com/item/4001048163251.html<BR>
-Pinheaders 2.54mm: 2x4 pins, 1x8 pins, 1x10 pins
-&nbsp&nbsp&nbsp&nbsp
-https://www.aliexpress.com/item/32759414721.html<BR>
-Kato Turntable connector: S08B-PASK-2(LF)(SN)
-&nbsp&nbsp&nbsp&nbsp
-https://www.aliexpress.com/item/1005001693841761.html<BR>
-Screwconnector 5.08mm: 1x2 pins
-&nbsp&nbsp&nbsp&nbsp
-https://www.aliexpress.com/item/1000006518504.html<BR>
-Arduino Shield Header 10 pins
-&nbsp&nbsp&nbsp&nbsp
-https://www.aliexpress.com/item/32671697975.html<BR>
-Arduino Shield Header 8 pins
-&nbsp&nbsp&nbsp&nbsp
-https://www.aliexpress.com/item/32677173846.html<BR>
-<BR>
-Optional:<BR>
-Arduino I2C LCD 20x4 rows
-&nbsp&nbsp&nbsp&nbsp
-https://www.aliexpress.com/item/4001135515638.html<BR>
+# Stand-alone Kato 20-283 Turntable Controller
 
-<HR>
-http://www.katousa.com/N/Unitrack/Turntable.html<BR>
-http://www.katousa.com/images/unitrack/20-283.jpg<BR>
-<BR>
-Followed the standard from Littfinski DatenTechnik (LDT) TurnTable Decoder TT-DEC<BR>
-https://www.ldt-infocenter.com/dokuwiki/doku.php?id=en:tt-dec<BR>
-<BR>
-Fleischmann Turntable Controller 6915<BR>
-https://www.fleischmann.de/en/product/3915-0-0-0-0-0-0-004002005-0/products.html<BR>
-ESU ECoS:<BR>
-http://www.esu.eu/en/products/digital-control/<BR>
+This repository contains an ESP32 (ESP12F) firmware project that drives a Kato 20-283 turntable directly without the DCCNext daughter board. The code implements the Fleischmann 6915 command set so the bridge can be controlled from software such as iTrain or from a command station such as the ESU ECoS.
 
-Uhlenbrock Intellibox:<BR>
-https://www.uhlenbrock.de/de_DE/produkte/digizen/index.htm<BR>
+## Features
 
-Model railroad control program called: iTrain:<BR>
-https://www.berros.eu/en/itrain/<BR>
+* Native ESP32 accessory decoder using the [`NmraDcc`](https://github.com/mrrwa/NmraDcc) library.
+* Accessory addresses **500 – 518** (red/green outputs) select tracks 1 – 36. Address **500** performs a 180° rotation (red = clockwise, green = counter-clockwise).
+* Hardware lock sequencing that pulses the lock coils, waits for the bridge to release, turns the bridge, and re-locks the bridge when in position.
+* Manual control via two buttons on GPIO 9 (counter-clockwise) and GPIO 10 (clockwise), including 180° turns, lock service pulses, and home-track storage.
+* Persistent storage of the last known bridge track in the ESP32 EEPROM.
+* Designed for use with an external auto-reverser: no bridge polarity switching is performed by this firmware.
+
+## Hardware mapping
+
+| Function             | GPIO |
+|----------------------|:----:|
+| Button – Left (CCW)  |  9   |
+| Button – Right (CW)  | 10   |
+| Turntable lock L1    | 16   |
+| Turntable lock L2    |  2   |
+| Turntable index      |  4   |
+| DCC input            |  5   |
+| Motor output M1      | 12   |
+| Motor output M2      | 14   |
+
+The DCC input should feed GPIO 5 through an opto-isolator (for example a 6N137 wired as in the reference circuit supplied with the hardware).
+
+## PlatformIO project layout
+
+```
+.
+├── .vscode/                # VS Code workspace recommendations
+├── include/                # (empty) header folder for future use
+├── lib/                    # (empty) private libraries folder
+├── src/
+│   └── main.cpp            # Firmware entry point
+└── platformio.ini          # Build configuration for ESP32/Arduino
+```
+
+Both `include/` and `lib/` are created automatically by PlatformIO when you first build the project. They remain empty in this repository so you can immediately start adding headers or custom libraries if required.
+
+## Building and flashing with VS Code + PlatformIO
+
+1. Install [Visual Studio Code](https://code.visualstudio.com/) and add the [PlatformIO IDE extension](https://platformio.org/install/ide?install=vscode). Opening this repository will prompt you to install the recommended extension.
+2. Open the project folder (`File → Open Folder…`). PlatformIO will detect `platformio.ini` and prepare the ESP32 toolchain.
+3. Connect your ESP32/ESP12F board, then in the PlatformIO toolbar select **ESP32 Dev Module** (defined in `platformio.ini`).
+4. Build the firmware with **PlatformIO: Build** (`Ctrl/Cmd + Alt + B`) and upload it using **PlatformIO: Upload** (`Ctrl/Cmd + Alt + U`).
+5. The accessory decoder address range is hard-coded; no CV programming is required after flashing.
+
+The firmware depends on the following libraries, which are fetched automatically by PlatformIO:
+
+* [`NmraDcc`](https://github.com/mrrwa/NmraDcc)
+* [`ezButton`](https://github.com/ArduinoGetStarted/button)
+
+## Manual controls
+
+The two physical buttons replicate the original three-button feature set using short, medium, and long presses. Hold times are measured from the moment the button is depressed; releasing the button executes the action.
+
+| Gesture | Action |
+|---------|--------|
+| Left short press (< 0.7 s) | Step 1 track counter-clockwise |
+| Right short press (< 0.7 s) | Step 1 track clockwise |
+| Left medium press (0.7 – 2 s) | Queue a 180° rotation counter-clockwise |
+| Right medium press (0.7 – 2 s) | Queue a 180° rotation clockwise |
+| Left long press (≥ 2 s) | Pulse the lock closed (manual engage) |
+| Right long press (≥ 2 s) | Pulse the lock open (manual release) |
+| Hold both buttons (≥ 2 s) | Store the current bridge position as track 1 (home/track 0 reference) |
+
+Manual lock pulses and home storage only run while the bridge controller is idle. The combined-button gesture mirrors the original "set track 0" function from the three-button controller.
+
+## Operating notes
+
+* The bridge position is stored in EEPROM. If the stored track is not valid after flashing, manually align the bridge to track 1 and use the **hold both buttons** gesture to store the home position.
+* Accessory address 500 (red) rotates the bridge 180° clockwise; address 500 (green) rotates 180° counter-clockwise.
+* Addresses 501 – 518 move to the programmed tracks:
+  * Red output → track 1 – 18 (counter-clockwise direction)
+  * Green output → track 19 – 36 (clockwise direction)
+* The firmware queues a new DCC command when the bridge is already turning; the queued command starts automatically once the current movement finishes.
+
